@@ -1,14 +1,48 @@
 # 國中排課系統
 ## 使用方法
 打開helper.html，依照說明填寫學校資訊
+# 國中排課系統
+
+利用 **Google OR-Tools** 自動產生國中課表。
+
+## 功能
+
+- HTML 建立排課資料
+- 自動產生 `input.txt`
+- Python 自動排課
+- 輸出 Excel 課表
+- 排課前衝突檢查
+
+## 使用
+
+1. 開啟 `排課資料整理小幫手.html`
+2. 填排課需求並下載 `input.txt`
+3. 將 `input.txt` 與 `scheduler.py` 放在同一資料夾<br>
+(step4. step5.擇一方法使用)
+4. 若未安裝python環境可將 `input.txt` 與 `scheduler.py` 一同丟給claude AI(免費)
+5. 若有安裝python環境，可執行python scheduler.py
+
+完成後會產生
+
+```
+schedule_output.xlsx
+```
+## 注意事項
+若使用python運行可不必擔心個資問題，此python & HTML都可本機離線運行 <br>
+若要使用AI幫忙跑，請勿直接輸入老師真實姓名。
+```
+可先使用：
+教師01、教師02
+教學組長、七忠導師
+```
 > ❌同種課每天不上第二節<br>
 > ❌無法排第8節<br>
 > ✅嚴格檢查每班是否確定是35節(5天各7節)<br>
 > ❌不連兩天上體育課<br>
-> ❌此html與python不會紀錄任何使用者訊息
-<br>
-簡單的方法：將產生的input.txt (文字文件檔案)與scheduler.py一起丟給claude即可產生課表.xlsx(excel檔案)<br>
-困難的方法：安裝python並運行scheduler.py，此法雖困難，但可離線運行，才能使用教師真名
 
-## 警告
-請勿把老師的真實姓名貼給 AI，建議用職稱（如：教學組長）或編號（如：教師01）代替，事後再用 Word、Excel 等離線軟體「尋找並取代」改回真實姓名。
+## 使用技術
+
+- Python
+- Google OR-Tools (CP-SAT)
+- OpenPyXL
+- HTML / JavaScript
