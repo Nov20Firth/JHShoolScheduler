@@ -1,4 +1,7 @@
 # 國中排課系統
+作者：王老師
+原始專案：[GitHub 專案連結](https://github.com/Nov20Firth/JHShoolScheduler/edit/main/README.md)
+
 利用 **python Google OR-Tools** 自動產生國中excel課表。
 系統分為兩個步驟：
 1. 使用 `step1courses.html` 整理課程、必排條件與教師不可排時段，產出 `input.txt` 。
@@ -42,3 +45,15 @@
 - OpenPyXL
 - HTML / JavaScript
 - claude & codex (vibe coding)
+
+- ## 授權與使用規則
+本專案歡迎非商業用途的使用、分享與修改。
+
+- ✅可分享。
+- ✅可修改。
+- ✅衍生作品須保留原作者資訊與原始專案連結。
+- ❌不得用於商業用途；包含販售、收費服務、商業部署或納入付費產品。
+- 商業使用請先聯絡作者取得書面授權。
+
+作者：王老師
+完整授權條款：PolyForm Noncommercial License 1.0.0，請見 [LICENSE](./LICENSE)。
