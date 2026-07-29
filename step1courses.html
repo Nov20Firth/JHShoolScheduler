@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排課資料整理小幫手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F5EF;
+    --card:#FFFFFF;
+    --ink:#20302A;
+    --ink-soft:#5B6B64;
+    --line:#DAD6C8;
+    --teal:#0F6E56;
+    --teal-dark:#0A4F3E;
+    --teal-tint:#E4F1EC;
+    --amber:#8A5A12;
+    --amber-tint:#FBF0DD;
+    --amber-line:#E4B863;
+    --red:#8A1F1F;
+    --red-tint:#FBEAEA;
+    --red-line:#E2A0A0;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+    padding:0 0 80px 0;
+  }
+  h1,h2,h3{ font-family:'Noto Serif TC', serif; font-weight:700; margin:0; }
+  .wrap{ max-width:880px; margin:0 auto; padding:0 20px; }
+
+  header.top{
+    background:var(--teal-dark); color:#F3EFE4; padding:40px 0 34px;
+  }
+  header.top h1{ font-size:26px; color:#fff; }
+  header.top p{ margin:10px 0 0; color:#D9E9E3; font-size:15px; max-width:640px; }
+
+  .intro-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 24px; margin-top:-20px; box-shadow:0 6px 18px rgba(20,40,32,0.06);
+  }
+  .intro-card h2{ font-size:18px; margin-bottom:8px; }
+  .intro-card ol{ padding-left:20px; margin:10px 0 0; }
+  .intro-card li{ margin-bottom:6px; }
+
+  .warn{
+    border:1px solid var(--red-line); background:var(--red-tint); color:var(--red);
+    border-radius:10px; padding:14px 16px; font-size:14px; margin-top:16px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .warn b{ display:block; margin-bottom:2px; }
+  .warn .mark{ font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; flex-shrink:0; }
+
+  section.step{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 24px; margin-top:22px; box-shadow:0 4px 12px rgba(20,40,32,0.05);
+  }
+  .step-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .step-num{
+    width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif;
+    font-weight:700; font-size:15px; flex-shrink:0;
+  }
+  .step-head h2{ font-size:18px; }
+  .step-desc{ color:var(--ink-soft); font-size:14px; margin:4px 0 18px 44px; }
+
+  label{ font-size:14px; font-weight:500; color:var(--ink); display:block; margin-bottom:6px; }
+  select, textarea, input[type=text]{
+    font-family:inherit; font-size:15px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    background:#fff; width:100%;
+  }
+  select:focus, textarea:focus, input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  textarea{ resize:vertical; min-height:90px; font-family:inherit; }
+
+  .grid-grades{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-left:44px; }
+  .grade-item{ display:flex; flex-direction:column; gap:6px; }
+
+  .row{ margin-left:44px; margin-bottom:16px; }
+  .row-inline{ display:flex; gap:14px; flex-wrap:wrap; margin-left:44px; margin-bottom:16px; }
+  .row-inline > div{ flex:1; min-width:140px; }
+
+  button{
+    font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;
+    border-radius:8px; border:1px solid var(--teal); background:var(--teal); color:#fff;
+    padding:9px 18px; transition:opacity .15s;
+  }
+  button:hover{ opacity:.88; }
+  button.secondary{ background:#fff; color:var(--teal); }
+  button.ghost{ background:transparent; border-color:var(--line); color:var(--ink-soft); padding:5px 10px; font-size:13px; }
+  button.danger-ghost{ background:transparent; border-color:var(--red-line); color:var(--red); padding:4px 9px; font-size:12px; }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-left:44px; margin-top:12px; }
+  .chip{
+    background:var(--teal-tint); color:var(--teal-dark); border:1px solid #BFDDD2;
+    border-radius:20px; padding:6px 8px 6px 14px; font-size:13px; display:flex; align-items:center; gap:8px;
+  }
+  .chip button{ padding:2px 7px; font-size:11px; border-radius:12px; background:#fff; color:var(--red); border:1px solid var(--red-line); }
+
+  .preview-box{ margin-left:44px; font-size:13px; color:var(--ink-soft); }
+  .preview-box .code{ font-family:monospace; background:var(--teal-tint); padding:2px 6px; border-radius:5px; color:var(--teal-dark); }
+
+  table.data-tbl{ width:calc(100% - 44px); margin-left:44px; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
+  table.data-tbl th, table.data-tbl td{ border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; }
+  table.data-tbl th{ color:var(--ink-soft); font-weight:500; font-size:12.5px; }
+  table.data-tbl td.num{ color:var(--ink-soft); }
+  .empty-hint{ margin-left:44px; color:var(--ink-soft); font-size:13.5px; font-style:normal; }
+
+  .period-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; max-width:380px; }
+  .period-grid label{ display:flex; flex-direction:column; align-items:center; gap:4px; font-size:12.5px; margin:0; cursor:pointer; }
+  .period-grid input{ width:18px; height:18px; }
+  .choice-grid{ display:flex; flex-wrap:wrap; gap:8px 14px; max-width:720px; }
+  .choice-grid label{ display:flex; align-items:center; gap:5px; margin:0; font-size:13.5px; cursor:pointer; }
+  .choice-grid input{ width:18px; height:18px; }
+  .quick-btns{ display:flex; gap:8px; margin:10px 0; }
+
+  .output-area{ margin-left:44px; }
+  textarea#outputText{ min-height:220px; font-family:monospace; font-size:12.5px; background:#FBFAF6; }
+  .output-actions{ display:flex; gap:10px; margin-top:12px; }
+
+  .final-steps{ margin-left:44px; background:var(--amber-tint); border:1px solid var(--amber-line); color:var(--amber);
+    border-radius:10px; padding:16px 18px; font-size:14px; margin-top:18px; }
+  .final-steps ol{ margin:8px 0 0; padding-left:20px; }
+  .final-steps li{ margin-bottom:6px; }
+
+  footer.reset-bar{ text-align:center; margin-top:30px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>排課資料整理小幫手</h1>
+    <p>用下拉選單整理課程資料，產生一份 input.txt，跟排課程式一起丟給 Claude 即可排出課表。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="intro-card">
+    <h2>使用方式</h2>
+    <ol>
+      <li>照步驟 1~5 用下拉選單輸入班級、老師、課程資料。</li>
+      <li>按「檢查並下載 input.txt」，系統會先確認每班都是 35 節。</li>
+      <li>在同一個資料夾執行 step2scheduler.py，即可產生 Excel 課表。</li>
+    </ol>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div>
+        <b>請勿把老師的真實姓名貼給 AI</b>
+        建議用職稱（如：教學組長）或編號（如：教師01）代替，事後再用 Word、Excel 等離線軟體「尋找並取代」改回真實姓名。
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">1</div><h2>學校資料與班級數量</h2></div>
+    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再選擇七、八、九年級各有幾個班。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="schoolName">學校名稱</label>
+        <input type="text" id="schoolName" placeholder="例如：○○國民中學">
+      </div>
+      <div>
+        <label for="schoolYear">學年度</label>
+        <input type="text" id="schoolYear" inputmode="numeric" placeholder="例如：115">
+      </div>
+      <div>
+        <label for="semester">學期</label>
+        <select id="semester">
+          <option value="1">第1學期</option>
+          <option value="2">第2學期</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-grades" id="gradeGrid"></div>
+
+    <div class="preview-box" style="margin-top:16px;">
+      目前產生的班級：<span id="classPreview">（尚未設定）</span>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">2</div><h2>教師名單</h2></div>
+    <div class="step-desc">把所有老師的名稱（建議用職稱或編號）貼在下面，可以用換行、空白或逗號分開，一次貼多筆也沒問題。</div>
+
+    <div class="row">
+      <label for="teacherBulk">老師名稱（一行一位，或用空白/逗號分開）</label>
+      <textarea id="teacherBulk" placeholder="例如：&#10;教學組長&#10;註冊組長&#10;七忠導師, 七孝導師"></textarea>
+    </div>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div>
+        <b>再次提醒：請勿貼上老師的真實姓名</b>
+        建議用職稱或「教師01」這類編號代替，事後再用 Word、Excel 等離線軟體「尋找並取代」改回真實姓名。
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <button onclick="addTeachersFromBulk()">加入這些老師</button>
+    </div>
+
+    <div class="chips" id="teacherChips"></div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">3</div><h2>任教班級（課程需求）</h2></div>
+    <div class="step-desc">先選一位老師，再貼上這位老師教的課程，格式是「科目、堂數、班級」，班級請填純數字（例如 701）。每行一筆，欄位之間可以用空白、Tab 或逗號分開。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="courseTeacherSelect">選擇老師</label>
+        <select id="courseTeacherSelect"><option value="">請先在步驟2加入老師</option></select>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
+      <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
+    </div>
+
+    <div class="row">
+      <label for="courseBulk">課程資料（科目、堂數、班級）</label>
+      <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
+    </div>
+
+    <div class="row">
+      <button onclick="addCoursesFromBulk()">加入這些課程</button>
+    </div>
+
+    <table class="data-tbl" id="courseTable" style="display:none;">
+      <thead><tr><th>老師</th><th>科目</th><th>堂數</th><th>班級</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="courseEmptyHint">目前還沒有加入任何課程。</div>
+    <div class="preview-box" id="classHoursSummary" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">4</div><h2>必排條件</h2></div>
+    <div class="step-desc">如果某些課一定要排在固定時段，請選擇科目、班級及老師。同一班同一科目有多位老師時，也能指定正確人選。此步驟選填。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="fixedSubjectSelect">科目</label>
+        <select id="fixedSubjectSelect" onchange="onFixedSubjectChange()"><option value="">請先完成步驟3</option></select>
+      </div>
+      <div>
+        <label for="fixedClassSelect">班級</label>
+        <select id="fixedClassSelect" onchange="onFixedClassChange()"><option value="">請先選科目</option></select>
+      </div>
+      <div>
+        <label for="fixedTeacherSelect">老師</label>
+        <select id="fixedTeacherSelect"><option value="">請先選班級</option></select>
+      </div>
+    </div>
+
+    <div class="row-inline">
+      <div>
+        <label for="fixedDaySelect">星期</label>
+        <select id="fixedDaySelect">
+          <option value="一">星期一</option><option value="二">星期二</option><option value="三">星期三</option>
+          <option value="四">星期四</option><option value="五">星期五</option>
+        </select>
+      </div>
+      <div>
+        <label for="fixedPeriodSelect">節次</label>
+        <select id="fixedPeriodSelect"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <button onclick="addFixedAssignment()">加入這筆必排條件</button>
+    </div>
+
+    <table class="data-tbl" id="fixedTable" style="display:none;">
+      <thead><tr><th>老師</th><th>科目</th><th>班級</th><th>星期</th><th>節次</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="fixedEmptyHint">目前還沒有設定任何必排條件。</div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">5</div><h2>老師不可排課時段</h2></div>
+    <div class="step-desc">選擇科目後，系統會依步驟3的任課資料預先勾選相關老師。跨領域教師可取消勾選，也能額外勾選其他老師，再一次套用到多個星期與節次。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="blockSubjectSelect">依任教科目預選老師（選填）</label>
+        <select id="blockSubjectSelect" onchange="onBlockSubjectChange()"><option value="">不依科目預選</option></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <label>老師（可複選；科目只負責預選，加入前可自由取消）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectTeachers('all')">全選老師</button>
+        <button type="button" class="ghost" onclick="quickSelectTeachers('clear')">清除勾選</button>
+      </div>
+      <div class="choice-grid" id="blockTeacherGrid"></div>
+      <div id="blockTeacherHint" style="margin-top:8px; color:var(--ink-soft); font-size:13px;"></div>
+    </div>
+
+    <div class="row">
+      <label>星期（可複選）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectDays('all')">星期一至五</button>
+        <button type="button" class="ghost" onclick="quickSelectDays('clear')">清除勾選</button>
+      </div>
+      <div class="choice-grid" id="dayCheckGrid"></div>
+    </div>
+
+    <div class="row">
+      <label>節次（可複選）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectPeriods('am')">整個上午（1-4節）</button>
+        <button type="button" class="secondary" onclick="quickSelectPeriods('pm')">整個下午（5-7節）</button>
+        <button type="button" class="ghost" onclick="quickSelectPeriods('clear')">清除勾選</button>
+      </div>
+      <div class="period-grid" id="periodCheckGrid"></div>
+    </div>
+
+    <div class="row">
+      <button onclick="addUnavailable()">加入這組不可排課設定</button>
+    </div>
+
+    <table class="data-tbl" id="blockTable" style="display:none;">
+      <thead><tr><th>老師</th><th>星期</th><th>節次</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="blockEmptyHint">目前還沒有設定任何不可排課時段。</div>
+  </section>
+
+  <!-- STEP 6 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">6</div><h2>產生資料檔</h2></div>
+    <div class="step-desc">系統會先確認每個班級都正好 35 節，再顯示內容並下載 input.txt。</div>
+
+    <div class="row">
+      <button onclick="generateAndDownload()">檢查並下載 input.txt</button>
+    </div>
+
+    <div class="output-area">
+      <textarea id="outputText" readonly placeholder="按上面的「產生資料檔」按鈕，這裡會顯示整理好的內容"></textarea>
+    </div>
+
+    <div class="final-steps">
+      <b>下一步</b>
+      把 input.txt 放在 scheduler.py 的同一個資料夾，再執行 Python 程式。
+    </div>
+  </section>
+
+  <footer class="reset-bar">
+    <button class="ghost" onclick="resetAll()">全部重新開始</button>
+  </footer>
+</div>
+
+<script>
+  const DAYS = ["一","二","三","四","五"];
+  const PERIODS = [1,2,3,4,5,6,7];
+
+  const state = {
+    grades: {7:0,8:0,9:0},
+    teachers: [],
+    courses: [],       // {teacher, subject, hours, klass}
+    fixed: [],         // {teacher, subject, klass, day, period}
+    unavailable: []    // {teacher, day, period}
+  };
+
+  const GRADE_LABEL = {7:"七年級",8:"八年級",9:"九年級"};
+
+  function initGradeGrid(){
+    const grid = document.getElementById('gradeGrid');
+    grid.innerHTML = '';
+    for(let g=7; g<=9; g++){
+      const div = document.createElement('div');
+      div.className = 'grade-item';
+      const label = document.createElement('label');
+      label.textContent = GRADE_LABEL[g] + ' 班級數';
+      const sel = document.createElement('select');
+      sel.id = 'gradeSel'+g;
+      for(let n=0; n<=12; n++){
+        const opt = document.createElement('option');
+        opt.value = n; opt.textContent = n===0 ? '0（沒有）' : n+' 班';
+        sel.appendChild(opt);
+      }
+      sel.onchange = () => { state.grades[g] = parseInt(sel.value); updateClassPreview(); };
+      div.appendChild(label); div.appendChild(sel);
+      grid.appendChild(div);
+    }
+  }
+
+  function pad2(n){ return n.toString().padStart(2,'0'); }
+
+  function getAllClasses(){
+    const list = [];
+    for(let g=7; g<=9; g++){
+      const count = state.grades[g] || 0;
+      for(let i=1; i<=count; i++){
+        list.push(`${g}${pad2(i)}`);
+      }
+    }
+    return list;
+  }
+
+  function updateClassPreview(){
+    const classes = getAllClasses();
+    document.getElementById('classPreview').textContent = classes.length ? classes.join('、') : '（尚未設定）';
+  }
+
+  // ---------- 步驟2：教師 ----------
+  function addTeachersFromBulk(){
+    const raw = document.getElementById('teacherBulk').value;
+    if(!raw.trim()) return;
+    const parts = raw.split(/[\n,，、\s\u3000]+/).map(s=>s.trim()).filter(Boolean);
+    parts.forEach(name => {
+      if(!state.teachers.includes(name)) state.teachers.push(name);
+    });
+    document.getElementById('teacherBulk').value = '';
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+  }
+
+  function removeTeacher(name){
+    state.teachers = state.teachers.filter(t => t !== name);
+    // 同步移除相關資料
+    state.courses = state.courses.filter(c => c.teacher !== name);
+    state.fixed = state.fixed.filter(f => f.teacher !== name);
+    state.unavailable = state.unavailable.filter(u => u.teacher !== name);
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBlockTable();
+  }
+
+  function renderTeacherChips(){
+    const wrap = document.getElementById('teacherChips');
+    wrap.innerHTML = '';
+    state.teachers.forEach(name => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `${escapeHtml(name)} `;
+      const btn = document.createElement('button');
+      btn.textContent = '移除';
+      btn.onclick = () => removeTeacher(name);
+      chip.appendChild(btn);
+      wrap.appendChild(chip);
+    });
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function refreshTeacherDependentSelects(){
+    const selects = [document.getElementById('courseTeacherSelect')];
+    selects.forEach(sel => {
+      const current = sel.value;
+      sel.innerHTML = '';
+      if(state.teachers.length === 0){
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '請先在步驟2加入老師';
+        sel.appendChild(opt);
+        return;
+      }
+      state.teachers.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(state.teachers.includes(current)) sel.value = current;
+    });
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+  }
+
+  function refreshBlockSubjectSelect(){
+    const sel = document.getElementById('blockSubjectSelect');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">不依科目預選</option>';
+    const subjects = [...new Set(state.courses.map(c=>c.subject))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    if(subjects.includes(current)) sel.value = current;
+    onBlockSubjectChange();
+  }
+
+  function onBlockSubjectChange(){
+    const subject = document.getElementById('blockSubjectSelect').value;
+    const matched = new Set(subject
+      ? state.courses.filter(c=>c.subject===subject).map(c=>c.teacher)
+      : []);
+    const grid = document.getElementById('blockTeacherGrid');
+    grid.innerHTML = '';
+    state.teachers.forEach(name => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = name; input.checked = matched.has(name);
+      const span = document.createElement('span');
+      span.textContent = name;
+      label.appendChild(input); label.appendChild(span);
+      grid.appendChild(label);
+    });
+    const hint = document.getElementById('blockTeacherHint');
+    if(state.teachers.length === 0) hint.textContent = '請先在步驟2加入老師';
+    else if(subject) hint.textContent = `已依「${subject}」預選 ${matched.size} 位老師；可在上方取消跨領域教師。`;
+    else hint.textContent = '請自行勾選老師，或先選擇科目自動預選。';
+  }
+
+  function refreshFixedSubjectSelect(){
+    const sel = document.getElementById('fixedSubjectSelect');
+    const current = sel.value;
+    sel.innerHTML = '';
+    const subjects = [...new Set(state.courses.map(c=>c.subject))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    if(subjects.length === 0){
+      const opt = document.createElement('option');
+      opt.value=''; opt.textContent = '請先在步驟3輸入課程';
+      sel.appendChild(opt);
+    } else {
+      subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        sel.appendChild(opt);
+      });
+      if(subjects.includes(current)) sel.value = current;
+    }
+    onFixedSubjectChange();
+  }
+
+  // ---------- 步驟3：課程 ----------
+  function addCoursesFromBulk(){
+    const teacher = document.getElementById('courseTeacherSelect').value;
+    if(!teacher){ alert('請先選擇老師'); return; }
+    const raw = document.getElementById('courseBulk').value;
+    if(!raw.trim()) return;
+    const lines = raw.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+    let errorLines = [];
+    lines.forEach(line => {
+      const parts = line.replace(/[,，\t]+/g,' ').trim().split(/\s+/);
+      if(parts.length !== 3){ errorLines.push(line); return; }
+      const [subject, hoursStr, klass] = parts;
+      const hours = parseInt(hoursStr);
+      if(isNaN(hours) || hours <= 0){ errorLines.push(line); return; }
+      state.courses.push({teacher, subject, hours, klass});
+    });
+    document.getElementById('courseBulk').value = '';
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+    if(document.getElementById('autoNextTeacher').checked){
+      switchToNextTeacher();
+    }
+    if(errorLines.length){
+      alert('以下幾行格式看起來不對，已略過：\n' + errorLines.join('\n') + '\n\n請確認格式是「科目 堂數 班級」，例如：體育 2 801');
+    }
+  }
+
+  function switchToNextTeacher(){
+    const sel = document.getElementById('courseTeacherSelect');
+    const idx = state.teachers.indexOf(sel.value);
+    if(idx !== -1 && idx < state.teachers.length - 1){
+      sel.value = state.teachers[idx + 1];
+    }
+  }
+
+  function removeCourse(idx){
+    state.courses.splice(idx,1);
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+  }
+
+  function renderCourseTable(){
+    const tbl = document.getElementById('courseTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    document.getElementById('courseEmptyHint').style.display = state.courses.length ? 'none' : 'block';
+    tbl.style.display = state.courses.length ? 'table' : 'none';
+    // 由新到舊排序，最新加入的排最上面，才不用捲到最下面確認
+    state.courses.map((c, idx) => ({c, idx})).reverse().forEach(({c, idx}) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(c.teacher)}</td><td>${escapeHtml(c.subject)}</td><td class="num">${c.hours}</td><td>${escapeHtml(c.klass)}</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeCourse(idx);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+    updateClassHoursSummary();
+  }
+
+  function updateClassHoursSummary(){
+    const box = document.getElementById('classHoursSummary');
+    if(state.courses.length === 0){ box.innerHTML = ''; return; }
+    const totalSlots = DAYS.length * PERIODS.length; // 一週總時段數（一班應該剛好排滿這麼多節）
+    const hoursByClass = {};
+    getAllClasses().forEach(k => { hoursByClass[k] = 0; }); // 步驟1設定過的班級也列出來，就算目前0堂也能發現漏排
+    state.courses.forEach(c => {
+      hoursByClass[c.klass] = (hoursByClass[c.klass] || 0) + c.hours;
+    });
+    let allOk = true;
+    const rows = Object.keys(hoursByClass).sort().map(klass => {
+      const hours = hoursByClass[klass];
+      const diff = hours - totalSlots;
+      let style = '', note = '';
+      if(diff > 0){
+        style = 'color:var(--red); font-weight:700;'; note = `　⚠ 超過 ${diff} 堂（應為 ${totalSlots} 堂）`; allOk = false;
+      } else if(diff < 0){
+        style = 'color:var(--amber); font-weight:700;'; note = `　⚠ 還差 ${-diff} 堂（應為 ${totalSlots} 堂）`; allOk = false;
+      }
+      return `<div style="${style}">${escapeHtml(klass)}班：共 ${hours} 堂課${note}</div>`;
+    });
+    const summaryLine = allOk
+      ? `<div style="color:var(--teal-dark); font-weight:700;">✅ 所有班級都剛好 ${totalSlots} 堂課</div>`
+      : `<div style="color:var(--red); font-weight:700;">⚠ 並非所有班級都剛好 ${totalSlots} 堂課，請檢查下方明細</div>`;
+    box.innerHTML = summaryLine + '<b>各班級目前總堂數：</b>' + rows.join('');
+  }
+  // ---------- 步驟4：必排條件 ----------
+  function initPeriodSelectFixed(){
+    const sel = document.getElementById('fixedPeriodSelect');
+    sel.innerHTML = '';
+    PERIODS.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = '第'+p+'節';
+      sel.appendChild(opt);
+    });
+  }
+
+  function onFixedSubjectChange(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const classSel = document.getElementById('fixedClassSelect');
+    classSel.innerHTML = '';
+    const classes = [...new Set(state.courses.filter(c=>c.subject===subject).map(c=>c.klass))]
+      .sort((a,b) => Number(a) - Number(b));
+    if(classes.length === 0){
+      const opt = document.createElement('option');
+      opt.value=''; opt.textContent = subject ? '此科目尚未輸入課程' : '請先選科目';
+      classSel.appendChild(opt);
+    } else {
+      classes.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k; opt.textContent = k+'班';
+        classSel.appendChild(opt);
+      });
+    }
+    onFixedClassChange();
+  }
+
+  function onFixedClassChange(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const klass = document.getElementById('fixedClassSelect').value;
+    const teacherSel = document.getElementById('fixedTeacherSelect');
+    const teachers = [...new Set(state.courses
+      .filter(c => c.klass===klass && c.subject===subject)
+      .map(c => c.teacher))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    teacherSel.innerHTML = '';
+    if(teachers.length === 0){
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = '請先選班級';
+      teacherSel.appendChild(opt);
+      return;
+    }
+    teachers.forEach(teacher => {
+      const opt = document.createElement('option');
+      opt.value = teacher; opt.textContent = teacher;
+      teacherSel.appendChild(opt);
+    });
+  }
+
+  function addFixedAssignment(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const klass = document.getElementById('fixedClassSelect').value;
+    const teacher = document.getElementById('fixedTeacherSelect').value;
+    const day = document.getElementById('fixedDaySelect').value;
+    const period = parseInt(document.getElementById('fixedPeriodSelect').value);
+    const match = state.courses.find(c => c.teacher===teacher && c.klass===klass && c.subject===subject);
+    if(!match){ alert('請確認科目、班級及老師都已選擇'); return; }
+    const exists = state.fixed.some(f => f.teacher===teacher && f.subject===subject && f.klass===klass && f.day===day && f.period===period);
+    if(exists){ alert('這筆必排條件已經加入過了'); return; }
+    state.fixed.push({teacher, subject, klass, day, period});
+    renderFixedTable();
+    // 科目、星期、節次都保留不變，只切換班級到下一個（同科目常常連續設定不同班級）
+    const classSel = document.getElementById('fixedClassSelect');
+    const idx = [...classSel.options].findIndex(o => o.value === klass);
+    if(idx !== -1 && idx < classSel.options.length - 1){
+      classSel.selectedIndex = idx + 1;
+      onFixedClassChange();
+    }
+  }
+
+  function removeFixed(idx){
+    state.fixed.splice(idx,1);
+    renderFixedTable();
+  }
+
+  function renderFixedTable(){
+    const tbl = document.getElementById('fixedTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    document.getElementById('fixedEmptyHint').style.display = state.fixed.length ? 'none' : 'block';
+    tbl.style.display = state.fixed.length ? 'table' : 'none';
+    state.fixed.forEach((f, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(f.teacher)}</td><td>${escapeHtml(f.subject)}</td><td>${escapeHtml(f.klass)}</td><td>星期${f.day}</td><td>第${f.period}節</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeFixed(idx);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- 步驟5：不可排課時段 ----------
+  function initPeriodCheckGrid(){
+    const grid = document.getElementById('periodCheckGrid');
+    grid.innerHTML = '';
+    PERIODS.forEach(p => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" value="${p}"><span>第${p}節</span>`;
+      grid.appendChild(label);
+    });
+  }
+
+  function initDayCheckGrid(){
+    const grid = document.getElementById('dayCheckGrid');
+    grid.innerHTML = '';
+    DAYS.forEach(day => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" value="${day}"><span>星期${day}</span>`;
+      grid.appendChild(label);
+    });
+  }
+
+  function quickSelectTeachers(mode){
+    document.querySelectorAll('#blockTeacherGrid input').forEach(box => {
+      box.checked = mode === 'all';
+    });
+  }
+
+  function quickSelectDays(mode){
+    document.querySelectorAll('#dayCheckGrid input').forEach(box => {
+      box.checked = mode === 'all';
+    });
+  }
+
+  function quickSelectPeriods(mode){
+    const boxes = document.querySelectorAll('#periodCheckGrid input');
+    boxes.forEach(b => {
+      const p = parseInt(b.value);
+      if(mode==='am') b.checked = (p>=1 && p<=4);
+      else if(mode==='pm') b.checked = (p>=5 && p<=7);
+      else if(mode==='clear') b.checked = false;
+    });
+  }
+
+  function addUnavailable(){
+    const teachers = [...document.querySelectorAll('#blockTeacherGrid input:checked')].map(b=>b.value);
+    const days = [...document.querySelectorAll('#dayCheckGrid input:checked')].map(b=>b.value);
+    const periods = [...document.querySelectorAll('#periodCheckGrid input:checked')].map(b=>parseInt(b.value));
+    if(teachers.length === 0){ alert('請至少勾選一位老師'); return; }
+    if(days.length === 0){ alert('請至少勾選一個星期'); return; }
+    if(periods.length === 0){ alert('請至少勾選一個節次'); return; }
+    teachers.forEach(teacher => days.forEach(day => periods.forEach(period => {
+      const exists = state.unavailable.some(u =>
+        u.teacher===teacher && u.day===day && u.period===period
+      );
+      if(!exists) state.unavailable.push({teacher, day, period});
+    })));
+    renderBlockTable();
+  }
+
+  function removeUnavailableGroup(teacher, day){
+    state.unavailable = state.unavailable.filter(u => !(u.teacher===teacher && u.day===day));
+    renderBlockTable();
+  }
+
+  function renderBlockTable(){
+    const tbl = document.getElementById('blockTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    // 依老師+星期分組顯示，比較好讀
+    const groups = {};
+    state.unavailable.forEach(u => {
+      const key = u.teacher+'|'+u.day;
+      if(!groups[key]) groups[key] = {teacher:u.teacher, day:u.day, periods:[]};
+      groups[key].periods.push(u.period);
+    });
+    const groupList = Object.values(groups);
+    document.getElementById('blockEmptyHint').style.display = groupList.length ? 'none' : 'block';
+    tbl.style.display = groupList.length ? 'table' : 'none';
+    groupList.forEach(g => {
+      g.periods.sort((a,b)=>a-b);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(g.teacher)}</td><td>星期${g.day}</td><td>第 ${g.periods.join('、')} 節</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeUnavailableGroup(g.teacher, g.day);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- 步驟6：產生輸出 ----------
+  function generateOutput(){
+    const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolYear = document.getElementById('schoolYear').value.trim();
+    const semester = document.getElementById('semester').value;
+    let lines = [`S|${schoolName}|${schoolYear}|${semester}`];
+    state.courses.forEach(c => {
+      lines.push(`C|${c.teacher}|${c.subject}|${c.hours}|${c.klass}`);
+    });
+    state.fixed.forEach(f => {
+      lines.push(`F|${f.teacher}|${f.subject}|${f.klass}|${f.day}|${f.period}`);
+    });
+    state.unavailable.forEach(u => {
+      lines.push(`U|${u.teacher}|${u.day}|${u.period}`);
+    });
+    document.getElementById('outputText').value = lines.join('\n');
+  }
+
+  function validateClassHours(){
+    const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolYear = document.getElementById('schoolYear').value.trim();
+    const invalidMetadata = [schoolName, schoolYear].some(value => value.includes('|') || /[\r\n]/.test(value));
+    const metadataErrors = [];
+    if(!schoolName) metadataErrors.push('請填寫學校名稱');
+    if(!schoolYear) metadataErrors.push('請填寫學年度');
+    else if(!/^\d{2,3}$/.test(schoolYear)) metadataErrors.push('學年度請輸入2至3位數字，例如115');
+    if(invalidMetadata) metadataErrors.push('學校名稱與學年度不可包含 | 或換行');
+
+    const expectedClasses = getAllClasses();
+    if(expectedClasses.length === 0) return [...metadataErrors, '請先在步驟1設定班級數量'];
+    const totals = Object.fromEntries(expectedClasses.map(k => [k, 0]));
+    state.courses.forEach(c => { totals[c.klass] = (totals[c.klass] || 0) + c.hours; });
+    const errors = [...metadataErrors];
+    Object.entries(totals).sort().forEach(([klass, hours]) => {
+      if(!expectedClasses.includes(klass)) errors.push(`${klass}班不在步驟1設定的班級中`);
+      else if(hours !== 35) errors.push(`${klass}班目前 ${hours} 節，應為 35 節`);
+    });
+    return errors;
+  }
+
+  function generateAndDownload(){
+    const errors = validateClassHours();
+    if(errors.length){
+      alert('資料尚未通過檢查：\n' + errors.join('\n'));
+      return;
+    }
+    generateOutput();
+    downloadOutput();
+  }
+
+  function downloadOutput(){
+    const content = document.getElementById('outputText').value;
+    if(!content){ alert('請先按「產生資料檔」'); return; }
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'input.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function resetAll(){
+    if(!confirm('確定要清空所有已輸入的資料嗎？這個動作無法復原。')) return;
+    state.grades = {7:0,8:0,9:0};
+    state.teachers = [];
+    state.courses = [];
+    state.fixed = [];
+    state.unavailable = [];
+    document.getElementById('schoolName').value = '';
+    document.getElementById('schoolYear').value = '';
+    document.getElementById('semester').value = '1';
+    initGradeGrid();
+    updateClassPreview();
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBlockTable();
+    document.getElementById('outputText').value = '';
+  }
+
+  // ---------- 初始化 ----------
+  initGradeGrid();
+  updateClassPreview();
+  initPeriodSelectFixed();
+  initPeriodCheckGrid();
+  initDayCheckGrid();
+  refreshTeacherDependentSelects();
+  renderCourseTable();
+  renderFixedTable();
+  renderBlockTable();
+</script>
+</body>
+</html>
