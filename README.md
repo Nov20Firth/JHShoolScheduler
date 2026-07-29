@@ -1,5 +1,5 @@
 # 國中排課系統
-作者：王老師
+作者：王老師<br>
 原始專案：[GitHub 專案連結](https://github.com/Nov20Firth/JHShoolScheduler/edit/main/README.md)
 
 利用 **python Google OR-Tools** 自動產生國中excel課表。
