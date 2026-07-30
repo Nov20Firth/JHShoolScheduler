@@ -68,6 +68,9 @@
   }
   .step-head h2{ font-size:18px; }
   .step-desc{ color:var(--ink-soft); font-size:14px; margin:4px 0 18px 44px; }
+  .subsection{ margin:24px 0 14px 44px; padding-top:20px; border-top:1px solid var(--line); }
+  .subsection h3{ font-size:17px; margin-bottom:5px; }
+  .subsection p{ color:var(--ink-soft); font-size:14px; margin:0; }
 
   label{ font-size:14px; font-weight:500; color:var(--ink); display:block; margin-bottom:6px; }
   select, textarea, input[type=text]{
@@ -80,6 +83,9 @@
 
   .grid-grades{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-left:44px; }
   .grade-item{ display:flex; flex-direction:column; gap:6px; }
+  .special-grade-check{ display:flex; align-items:center; gap:7px; margin:2px 0 0; color:var(--amber); font-size:13px; cursor:pointer; }
+  .special-grade-check input{ width:17px; height:17px; margin:0; }
+  .special-class-label{ color:var(--amber); font-weight:700; }
 
   .row{ margin-left:44px; margin-bottom:16px; }
   .row-inline{ display:flex; gap:14px; flex-wrap:wrap; margin-left:44px; margin-bottom:16px; }
@@ -120,6 +126,21 @@
   .choice-grid input{ width:18px; height:18px; }
   .quick-btns{ display:flex; gap:8px; margin:10px 0; }
 
+  .binding-card{ margin:0 0 16px 44px; border:1px solid var(--line); border-radius:10px; padding:16px; background:#FBFAF6; }
+  .binding-course-row{ display:grid; grid-template-columns:70px minmax(130px,1fr) minmax(150px,1fr) auto; gap:10px; align-items:end; margin-bottom:10px; }
+  .binding-course-row .binding-name{ align-self:center; font-weight:700; color:var(--teal-dark); }
+  .special-auto-class{ background:var(--amber-tint); border:1px solid var(--amber-line); border-radius:8px; padding:9px 12px; min-height:43px; }
+  .special-slots{ margin:14px 0 0 44px; }
+  .special-slot-row{ border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#fff; }
+  .special-slot-head{ font-weight:700; color:var(--teal-dark); margin-bottom:9px; }
+  .special-slot-fields{ display:grid; grid-template-columns:110px 100px repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+  .special-slot-fields label{ font-size:12.5px; }
+  @media (max-width:640px){
+    .binding-course-row{ grid-template-columns:1fr; }
+    .binding-course-row .binding-name{ margin-top:5px; }
+    .special-slot-fields{ grid-template-columns:1fr 1fr; }
+  }
+
   .output-area{ margin-left:44px; }
   textarea#outputText{ min-height:220px; font-family:monospace; font-size:12.5px; background:#FBFAF6; }
   .output-actions{ display:flex; gap:10px; margin-top:12px; }
@@ -150,6 +171,16 @@
       <li>在同一個資料夾執行 step2scheduler.py，即可產生 Excel 課表。</li>
     </ol>
 
+    <div class="row" style="margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('inputFile').click()">讀取舊 input.txt</button>
+      <input type="file" id="inputFile" accept=".txt,text/plain" onchange="importInputFile(this)" style="display:none;">
+    </div>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div><b>本網站不會保存任何資料，重新整理（F5）後，已填內容會全部消失。</b></div>
+    </div>
+
     <div class="warn">
       <span class="mark">⚠</span>
       <div>
@@ -162,7 +193,7 @@
   <!-- STEP 1 -->
   <section class="step">
     <div class="step-head"><div class="step-num">1</div><h2>學校資料與班級數量</h2></div>
-    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再選擇七、八、九年級各有幾個班。</div>
+    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再選擇七、八、九年級各有幾個班。學校名稱請勿輸入「|」。</div>
 
     <div class="row-inline">
       <div>
@@ -250,8 +281,57 @@
 
   <!-- STEP 4 -->
   <section class="step">
-    <div class="step-head"><div class="step-num">4</div><h2>必排條件</h2></div>
-    <div class="step-desc">如果某些課一定要排在固定時段，請選擇科目、班級及老師。同一班同一科目有多位老師時，也能指定正確人選。此步驟選填。</div>
+    <div class="step-head"><div class="step-num">4</div><h2>綁課與必排</h2></div>
+
+    <div class="subsection"><h3>同步綁課</h3></div>
+
+    <div class="row-inline">
+      <div>
+        <label>綁課類型</label>
+        <div class="choice-grid">
+          <label><input type="radio" name="bindingType" id="bindingTypeNormal" value="normal" checked onchange="onBindingTypeChange()"><span>一般綁班</span></label>
+          <label><input type="radio" name="bindingType" id="bindingTypeSpecial" value="special" onchange="onBindingTypeChange()"><span>特教抽離</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="binding-card">
+      <div id="specialCourseRows"></div>
+      <button type="button" class="secondary" onclick="addSpecialCourseRow()">＋增加一個互綁班級</button>
+    </div>
+
+    <div class="row-inline" id="specialBindingOptions" style="display:none;">
+      <div>
+        <label for="specialTeacherSelect">特教老師</label>
+        <select id="specialTeacherSelect"><option value="">請先在步驟2加入老師</option></select>
+      </div>
+      <div>
+        <label for="specialSubjectSelect">特生課表科目</label>
+        <select id="specialSubjectSelect" onchange="updateSpecialSlotDefaults()"><option value="">請先選擇互綁課程</option></select>
+      </div>
+      <div>
+        <label>特生課表</label>
+        <div class="special-auto-class" id="specialClassDisplay">請先在步驟1勾選特生班</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button type="button" class="secondary" onclick="prepareSpecialSlots()">產生綁課時段</button>
+    </div>
+
+    <div class="special-slots" id="specialSlotRows"></div>
+
+    <div class="row">
+      <button onclick="addSpecialBindingGroup()">加入這組同步綁課</button>
+    </div>
+
+    <table class="data-tbl" id="specialFixedTable" style="display:none;">
+      <thead><tr><th>類型</th><th>參與課程</th><th>特生課程</th><th>星期</th><th>節次</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="specialFixedEmptyHint">目前還沒有設定任何同步綁課。</div>
+
+    <div class="subsection"><h3>必排條件</h3></div>
 
     <div class="row-inline">
       <div>
@@ -282,21 +362,19 @@
       </div>
     </div>
 
-    <div class="row">
-      <button onclick="addFixedAssignment()">加入這筆必排條件</button>
-    </div>
+    <div class="row"><button onclick="addFixedAssignment()">加入必排</button></div>
 
     <table class="data-tbl" id="fixedTable" style="display:none;">
       <thead><tr><th>老師</th><th>科目</th><th>班級</th><th>星期</th><th>節次</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty-hint" id="fixedEmptyHint">目前還沒有設定任何必排條件。</div>
+    <div class="empty-hint" id="fixedEmptyHint">目前還沒有設定必排。</div>
   </section>
 
   <!-- STEP 5 -->
   <section class="step">
     <div class="step-head"><div class="step-num">5</div><h2>老師不可排課時段</h2></div>
-    <div class="step-desc">選擇科目後，系統會依步驟3的任課資料預先勾選相關老師。跨領域教師可取消勾選，也能額外勾選其他老師，再一次套用到多個星期與節次。</div>
+    <div class="step-desc">可依科目預選老師，再選擇星期與節次。</div>
 
     <div class="row-inline">
       <div>
@@ -306,9 +384,11 @@
     </div>
 
     <div class="row">
-      <label>老師（可複選；科目只負責預選，加入前可自由取消）</label>
+      <label>老師（可複選）</label>
       <div class="quick-btns">
         <button type="button" class="secondary" onclick="quickSelectTeachers('all')">全選老師</button>
+        <button type="button" class="secondary" onclick="quickSelectTeachers('主任')">全選主任</button>
+        <button type="button" class="secondary" onclick="quickSelectTeachers('組長')">全選組長</button>
         <button type="button" class="ghost" onclick="quickSelectTeachers('clear')">清除勾選</button>
       </div>
       <div class="choice-grid" id="blockTeacherGrid"></div>
@@ -335,7 +415,7 @@
     </div>
 
     <div class="row">
-      <button onclick="addUnavailable()">加入這組不可排課設定</button>
+      <button onclick="addUnavailable()">加入不可排</button>
     </div>
 
     <table class="data-tbl" id="blockTable" style="display:none;">
@@ -348,7 +428,7 @@
   <!-- STEP 6 -->
   <section class="step">
     <div class="step-head"><div class="step-num">6</div><h2>產生資料檔</h2></div>
-    <div class="step-desc">系統會先確認每個班級都正好 35 節，再顯示內容並下載 input.txt。</div>
+    <div class="step-desc">系統會先確認步驟1設定的普通班都正好 35 節；特生課表只記錄特教綁課，不需要填滿35節。</div>
 
     <div class="row">
       <button onclick="generateAndDownload()">檢查並下載 input.txt</button>
@@ -375,9 +455,11 @@
 
   const state = {
     grades: {7:0,8:0,9:0},
+    specialGrades: {7:false,8:false,9:false},
     teachers: [],
     courses: [],       // {teacher, subject, hours, klass}
     fixed: [],         // {teacher, subject, klass, day, period}
+    specialBindings: [], // 指定時段同步綁課（type: normal 或 special）
     unavailable: []    // {teacher, day, period}
   };
 
@@ -398,10 +480,51 @@
         opt.value = n; opt.textContent = n===0 ? '0（沒有）' : n+' 班';
         sel.appendChild(opt);
       }
-      sel.onchange = () => { state.grades[g] = parseInt(sel.value); updateClassPreview(); };
-      div.appendChild(label); div.appendChild(sel);
+      sel.value = state.grades[g] || 0;
+      sel.onchange = () => {
+        const next = parseInt(sel.value);
+        if(next !== state.grades[g] && hasClassDependentData()){
+          const proceed = confirm('已有課程資料。變更班級數可能使原有資料對不上，建議按「取消」後使用頁面最下方的「全部重新開始」重填。\n\n仍要變更嗎？');
+          if(!proceed){
+            sel.value = state.grades[g];
+            return;
+          }
+        }
+        state.grades[g] = next;
+        if(next === 0) state.specialGrades[g] = false;
+        initGradeGrid();
+        updateClassPreview();
+        resetSpecialBindingBuilder();
+      };
+      const specialLabel = document.createElement('label');
+      specialLabel.className = 'special-grade-check';
+      const specialCheck = document.createElement('input');
+      specialCheck.type = 'checkbox';
+      specialCheck.checked = !!state.specialGrades[g];
+      specialCheck.disabled = (state.grades[g] || 0) === 0;
+      specialCheck.onchange = () => {
+        if(state.specialBindings.some(binding => binding.type !== 'normal')){
+          alert('特教綁課已經使用這個特生班。若要變更，請先拉到頁面最下方按「全部清除」，再重新填寫。');
+          specialCheck.checked = state.specialGrades[g];
+          return;
+        }
+        state.specialGrades[g] = specialCheck.checked;
+        state.courses = state.courses.filter(c => !getSpecialClasses().includes(c.klass));
+        updateClassPreview();
+        renderCourseTable();
+        refreshFixedSubjectSelect();
+        refreshBlockSubjectSelect();
+        resetSpecialBindingBuilder();
+      };
+      specialLabel.appendChild(specialCheck);
+      specialLabel.appendChild(document.createTextNode(' 有特殊生班級'));
+      div.appendChild(label); div.appendChild(sel); div.appendChild(specialLabel);
       grid.appendChild(div);
     }
+  }
+
+  function hasClassDependentData(){
+    return state.courses.length > 0 || state.fixed.length > 0 || state.specialBindings.length > 0;
   }
 
   function pad2(n){ return n.toString().padStart(2,'0'); }
@@ -417,9 +540,24 @@
     return list;
   }
 
+  function getSpecialClass(grade){
+    const count = state.grades[grade] || 0;
+    return count > 0 && state.specialGrades[grade] ? `${grade}${pad2(count + 1)}` : '';
+  }
+
+  function getSpecialClasses(){
+    return [7,8,9].map(getSpecialClass).filter(Boolean);
+  }
+
   function updateClassPreview(){
-    const classes = getAllClasses();
-    document.getElementById('classPreview').textContent = classes.length ? classes.join('、') : '（尚未設定）';
+    const items = [];
+    for(let g=7; g<=9; g++){
+      const count = state.grades[g] || 0;
+      for(let i=1; i<=count; i++) items.push(`${g}${pad2(i)}`);
+      const specialClass = getSpecialClass(g);
+      if(specialClass) items.push(`<span class="special-class-label">${specialClass}（特）</span>`);
+    }
+    document.getElementById('classPreview').innerHTML = items.length ? items.join('、') : '（尚未設定）';
   }
 
   // ---------- 步驟2：教師 ----------
@@ -436,15 +574,20 @@
   }
 
   function removeTeacher(name){
+    if(!confirm(`確定要移除「${name}」嗎？相關課程設定也會一起刪除；若資料填錯，建議使用頁面最下方的「全部重新開始」重填。`)) return;
     state.teachers = state.teachers.filter(t => t !== name);
     // 同步移除相關資料
     state.courses = state.courses.filter(c => c.teacher !== name);
     state.fixed = state.fixed.filter(f => f.teacher !== name);
+    state.specialBindings = state.specialBindings.filter(b =>
+      b.teacher !== name && b.courses.every(c => c.teacher !== name)
+    );
     state.unavailable = state.unavailable.filter(u => u.teacher !== name);
     renderTeacherChips();
     refreshTeacherDependentSelects();
     renderCourseTable();
     renderFixedTable();
+    renderSpecialFixedTable();
     renderBlockTable();
   }
 
@@ -468,7 +611,10 @@
   }
 
   function refreshTeacherDependentSelects(){
-    const selects = [document.getElementById('courseTeacherSelect')];
+    const selects = [
+      document.getElementById('courseTeacherSelect'),
+      document.getElementById('specialTeacherSelect')
+    ];
     selects.forEach(sel => {
       const current = sel.value;
       sel.innerHTML = '';
@@ -561,12 +707,14 @@
       const [subject, hoursStr, klass] = parts;
       const hours = parseInt(hoursStr);
       if(isNaN(hours) || hours <= 0){ errorLines.push(line); return; }
+      if(getSpecialClasses().includes(klass)) return; // 特生班課表只由 SP 產生，忽略誤填的 C
       state.courses.push({teacher, subject, hours, klass});
     });
     document.getElementById('courseBulk').value = '';
     renderCourseTable();
     refreshFixedSubjectSelect();
     refreshBlockSubjectSelect();
+    resetSpecialBindingBuilder();
     if(document.getElementById('autoNextTeacher').checked){
       switchToNextTeacher();
     }
@@ -588,6 +736,7 @@
     renderCourseTable();
     refreshFixedSubjectSelect();
     refreshBlockSubjectSelect();
+    resetSpecialBindingBuilder();
   }
 
   function renderCourseTable(){
@@ -615,7 +764,7 @@
     const totalSlots = DAYS.length * PERIODS.length; // 一週總時段數（一班應該剛好排滿這麼多節）
     const hoursByClass = {};
     getAllClasses().forEach(k => { hoursByClass[k] = 0; }); // 步驟1設定過的班級也列出來，就算目前0堂也能發現漏排
-    state.courses.forEach(c => {
+    state.courses.filter(c => !getSpecialClasses().includes(c.klass)).forEach(c => {
       hoursByClass[c.klass] = (hoursByClass[c.klass] || 0) + c.hours;
     });
     let allOk = true;
@@ -637,12 +786,14 @@
   }
   // ---------- 步驟4：必排條件 ----------
   function initPeriodSelectFixed(){
-    const sel = document.getElementById('fixedPeriodSelect');
-    sel.innerHTML = '';
-    PERIODS.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p; opt.textContent = '第'+p+'節';
-      sel.appendChild(opt);
+    ['fixedPeriodSelect'].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = '';
+      PERIODS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = '第'+p+'節';
+        sel.appendChild(opt);
+      });
     });
   }
 
@@ -731,6 +882,334 @@
     });
   }
 
+  let specialDraft = {participants:[], slots:[]};
+
+  function classesForSpecialGrade(grade){
+    const count = state.grades[grade] || 0;
+    return Array.from({length:count}, (_,i) => `${grade}${pad2(i+1)}`);
+  }
+
+  function eligibleSpecialRegularClasses(){
+    return [7,8,9].filter(g => state.specialGrades[g]).flatMap(classesForSpecialGrade);
+  }
+
+  function isSpecialBindingMode(){
+    return document.querySelector('input[name="bindingType"]:checked').value === 'special';
+  }
+
+  function eligibleBindingClasses(){
+    return isSpecialBindingMode() ? eligibleSpecialRegularClasses() : getAllClasses();
+  }
+
+  function onBindingTypeChange(){
+    document.getElementById('specialBindingOptions').style.display = isSpecialBindingMode() ? 'grid' : 'none';
+    resetSpecialBindingBuilder();
+  }
+
+  function subjectsForClass(klass){
+    return [...new Set(state.courses.filter(c => c.klass===klass).map(c => c.subject))]
+      .sort((a,b) => courseHours(klass,b) - courseHours(klass,a) || a.localeCompare(b, 'zh-Hant'));
+  }
+
+  function courseHours(klass, subject){
+    return state.courses.filter(c => c.klass===klass && c.subject===subject)
+      .reduce((sum,c) => sum + c.hours, 0);
+  }
+
+  function courseTeacher(klass, subject){
+    const course = state.courses.find(c => c.klass===klass && c.subject===subject);
+    return course ? course.teacher : '';
+  }
+
+  function resetSpecialBindingBuilder(){
+    const eligible = eligibleBindingClasses();
+    const firstGrade = eligible.length ? Number(eligible[0][0]) : 0;
+    const classes = firstGrade ? classesForSpecialGrade(firstGrade) : [];
+    specialDraft = {
+      participants: classes.slice(0,2).map((klass,idx) => {
+        const subjects = subjectsForClass(klass);
+        const firstSubject = idx > 0 && specialDraft.participants?.[0]?.subject;
+        return {klass, subject:subjects.includes(firstSubject) ? firstSubject : (subjects[0] || '')};
+      }),
+      slots:[]
+    };
+    renderSpecialCourseRows();
+  }
+
+  function addSpecialCourseRow(){
+    const grade = specialDraft.participants[0]?.klass?.[0];
+    if(!grade){ alert(isSpecialBindingMode() ? '請先在步驟1勾選有特生班的年級' : '請先在步驟1設定班級'); return; }
+    const classes = classesForSpecialGrade(Number(grade));
+    const used = new Set(specialDraft.participants.map(p => p.klass));
+    const klass = classes.find(k => !used.has(k));
+    if(!klass){ alert('這個年級已沒有其他普通班可以加入'); return; }
+    const subjects = subjectsForClass(klass);
+    const firstSubject = specialDraft.participants[0]?.subject || '';
+    specialDraft.participants.push({klass, subject:subjects.includes(firstSubject) ? firstSubject : (subjects[0] || '')});
+    specialDraft.slots = [];
+    renderSpecialCourseRows();
+  }
+
+  function removeSpecialCourseRow(index){
+    if(specialDraft.participants.length <= 2) return;
+    specialDraft.participants.splice(index,1);
+    specialDraft.slots = [];
+    renderSpecialCourseRows();
+  }
+
+  function setSpecialParticipantClass(index, klass){
+    if(index === 0){
+      const grade = Number(klass[0]);
+      const classes = classesForSpecialGrade(grade);
+      const orderedClasses = [klass, ...classes.filter(k => k !== klass)];
+      specialDraft.participants = specialDraft.participants.map((p,i) => {
+        const nextClass = orderedClasses[i] || '';
+        const subjects = subjectsForClass(nextClass);
+        const preferred = i>0 ? specialDraft.participants[0]?.subject : p.subject;
+        return {klass:nextClass, subject:subjects.includes(preferred) ? preferred : (subjects[0] || '')};
+      }).filter(p => p.klass);
+    } else {
+      const subjects = subjectsForClass(klass);
+      const preferred = specialDraft.participants[0]?.subject || '';
+      specialDraft.participants[index] = {
+        klass,
+        subject:subjects.includes(preferred) ? preferred : (subjects[0] || '')
+      };
+    }
+    specialDraft.slots = [];
+    renderSpecialCourseRows();
+  }
+
+  function setSpecialParticipantSubject(index, subject){
+    specialDraft.participants[index].subject = subject;
+    specialDraft.slots = [];
+    renderSpecialCourseRows();
+  }
+
+  function renderSpecialCourseRows(){
+    const wrap = document.getElementById('specialCourseRows');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    if(specialDraft.participants.length < 2){
+      wrap.innerHTML = `<div style="color:var(--amber); margin-bottom:10px;">${isSpecialBindingMode() ? '請先在步驟1勾選特生班，且該年級至少要有兩個普通班。' : '請先在步驟1設定至少兩個同年級班級。'}</div>`;
+    }
+    const firstGrade = specialDraft.participants[0]?.klass?.[0] || '';
+    specialDraft.participants.forEach((participant,index) => {
+      const row = document.createElement('div');
+      row.className = 'binding-course-row';
+      const name = document.createElement('div');
+      name.className = 'binding-name';
+      name.textContent = `${String.fromCharCode(65+index)}班`;
+
+      const classBox = document.createElement('div');
+      const classLabel = document.createElement('label'); classLabel.textContent = '班級';
+      const classSelect = document.createElement('select');
+      const classOptions = index===0 ? eligibleBindingClasses() : classesForSpecialGrade(Number(firstGrade));
+      classOptions.forEach(klass => {
+        const opt = document.createElement('option'); opt.value=klass; opt.textContent=klass+'班'; classSelect.appendChild(opt);
+      });
+      classSelect.value = participant.klass;
+      classSelect.onchange = () => setSpecialParticipantClass(index, classSelect.value);
+      classBox.append(classLabel,classSelect);
+
+      const subjectBox = document.createElement('div');
+      const subjectLabel = document.createElement('label'); subjectLabel.textContent = '主要綁課科目';
+      const subjectSelect = document.createElement('select');
+      const subjects = subjectsForClass(participant.klass);
+      if(!subjects.length){
+        const opt = document.createElement('option'); opt.value=''; opt.textContent='請先在步驟3輸入這班的課程'; subjectSelect.appendChild(opt);
+      } else {
+        subjects.forEach(subject => {
+          const opt = document.createElement('option');
+          opt.value=subject; opt.textContent=`${subject}（${courseHours(participant.klass,subject)}堂）`;
+          subjectSelect.appendChild(opt);
+        });
+      }
+      subjectSelect.value = participant.subject;
+      subjectSelect.onchange = () => setSpecialParticipantSubject(index, subjectSelect.value);
+      subjectBox.append(subjectLabel,subjectSelect);
+
+      const removeBox = document.createElement('div');
+      if(index >= 2){
+        const btn = document.createElement('button'); btn.type='button'; btn.className='danger-ghost'; btn.textContent='移除';
+        btn.onclick = () => removeSpecialCourseRow(index); removeBox.appendChild(btn);
+      }
+      row.append(name,classBox,subjectBox,removeBox);
+      wrap.appendChild(row);
+    });
+    refreshSpecialSubjectSelect();
+    updateSpecialClassDisplay();
+    renderSpecialSlotRows();
+  }
+
+  function refreshSpecialSubjectSelect(){
+    const sel = document.getElementById('specialSubjectSelect');
+    if(!sel) return;
+    if(!isSpecialBindingMode()) return;
+    const current = sel.value;
+    const subjects = [...new Set(specialDraft.participants.map(p => p.subject).filter(Boolean))];
+    sel.innerHTML = '';
+    if(subjects.length !== 1){
+      const opt = document.createElement('option'); opt.value=''; opt.textContent='請選擇特生上課科目'; sel.appendChild(opt);
+    }
+    subjects.forEach(subject => {
+      const opt = document.createElement('option'); opt.value=subject; opt.textContent=subject; sel.appendChild(opt);
+    });
+    if(subjects.length === 1) sel.value = subjects[0];
+    else if(subjects.includes(current)) sel.value = current;
+  }
+
+  function specialClassForDraft(){
+    const grades = [...new Set(specialDraft.participants.map(p => p.klass?.[0]).filter(Boolean))];
+    return grades.length===1 ? getSpecialClass(Number(grades[0])) : '';
+  }
+
+  function updateSpecialClassDisplay(){
+    const box = document.getElementById('specialClassDisplay');
+    if(!box) return;
+    if(!isSpecialBindingMode()) return;
+    const klass = specialClassForDraft();
+    box.textContent = klass ? `${klass}（特）` : '請先在步驟1勾選對應年級的特生班';
+  }
+
+  function prepareSpecialSlots(){
+    const participants = specialDraft.participants;
+    if(participants.length < 2){ alert('至少需要兩個普通班互綁'); return; }
+    if(new Set(participants.map(p=>p.klass)).size !== participants.length){ alert('互綁班級不可重複'); return; }
+    if(new Set(participants.map(p=>p.klass[0])).size !== 1){ alert('互綁班級必須是同一個年級'); return; }
+    if(participants.some(p => !p.subject || courseHours(p.klass,p.subject)<=0)){
+      alert('請先為每個班級選擇已有課程資料的主要綁課科目'); return;
+    }
+    const specialClass = specialClassForDraft();
+    const specialSubject = document.getElementById('specialSubjectSelect').value;
+    if(isSpecialBindingMode() && !specialClass){ alert('請先在步驟1勾選這個年級有特殊生班級'); return; }
+    if(isSpecialBindingMode() && !specialSubject){ alert('請選擇特生課表科目'); return; }
+    const bindingSubjects = [...new Set(participants.map(p => p.subject))];
+    const sequences = participants.map(p => {
+      const orderedSubjects = [p.subject, ...bindingSubjects.filter(subject => subject !== p.subject)];
+      return orderedSubjects.flatMap(subject =>
+        Array(courseHours(p.klass, subject)).fill(subject)
+      );
+    });
+    const count = isSpecialBindingMode()
+      ? Math.max(...sequences.map(sequence => sequence.length))
+      : bindingSubjects.reduce((sum,subject) =>
+          sum + courseHours(participants[0].klass,subject), 0);
+    specialDraft.slots = Array.from({length:count}, (_,index) => ({
+      day:DAYS[index % DAYS.length],
+      period:Math.floor(index / DAYS.length) + 1,
+      subjects:isSpecialBindingMode()
+        ? participants.map((p, pIndex) => sequences[pIndex][index] || '')
+        : participants.map(() => '')
+    }));
+    renderSpecialSlotRows();
+  }
+
+  function updateSpecialSlotDefaults(){
+    renderSpecialSlotRows();
+  }
+
+  function renderSpecialSlotRows(){
+    const wrap = document.getElementById('specialSlotRows');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    specialDraft.slots.forEach((slot,index) => {
+      const row = document.createElement('div'); row.className='special-slot-row';
+      const head = document.createElement('div'); head.className='special-slot-head'; head.textContent=`第 ${index+1} 次綁課`;
+      const fields = document.createElement('div'); fields.className='special-slot-fields';
+
+      const dayBox = document.createElement('div');
+      const dayLabel = document.createElement('label'); dayLabel.textContent='星期';
+      const daySelect = document.createElement('select');
+      DAYS.forEach(day => { const opt=document.createElement('option'); opt.value=day; opt.textContent='星期'+day; daySelect.appendChild(opt); });
+      daySelect.value=slot.day; daySelect.onchange=()=>{ slot.day=daySelect.value; };
+      dayBox.append(dayLabel,daySelect); fields.appendChild(dayBox);
+
+      const periodBox = document.createElement('div');
+      const periodLabel = document.createElement('label'); periodLabel.textContent='節次';
+      const periodSelect = document.createElement('select');
+      PERIODS.forEach(period => { const opt=document.createElement('option'); opt.value=period; opt.textContent='第'+period+'節'; periodSelect.appendChild(opt); });
+      periodSelect.value=slot.period; periodSelect.onchange=()=>{ slot.period=parseInt(periodSelect.value); };
+      periodBox.append(periodLabel,periodSelect); fields.appendChild(periodBox);
+
+      specialDraft.participants.forEach((participant,pIndex) => {
+        const subjectBox = document.createElement('div');
+        const subjectLabel = document.createElement('label'); subjectLabel.textContent=participant.klass+'班科目';
+        const subjectSelect = document.createElement('select');
+        const selectedSubjects = [...new Set(specialDraft.participants.map(p => p.subject).filter(Boolean))]
+          .sort((a,b) => courseHours(participant.klass,b) - courseHours(participant.klass,a) || a.localeCompare(b, 'zh-Hant'));
+        const subjects = isSpecialBindingMode()
+          ? subjectsForClass(participant.klass)
+          : selectedSubjects;
+        const blank = document.createElement('option'); blank.value=''; blank.textContent='請選擇'; subjectSelect.appendChild(blank);
+        subjects.forEach(subject => { const opt=document.createElement('option'); opt.value=subject; opt.textContent=subject; subjectSelect.appendChild(opt); });
+        subjectSelect.value=slot.subjects[pIndex] || '';
+        subjectSelect.onchange=()=>{ slot.subjects[pIndex]=subjectSelect.value; };
+        subjectBox.append(subjectLabel,subjectSelect); fields.appendChild(subjectBox);
+      });
+      row.append(head,fields); wrap.appendChild(row);
+    });
+  }
+
+  function addSpecialBindingGroup(){
+    const isSpecial = isSpecialBindingMode();
+    const specialTeacher = document.getElementById('specialTeacherSelect').value;
+    const specialSubject = document.getElementById('specialSubjectSelect').value;
+    const specialClass = specialClassForDraft();
+    if(isSpecial && (!specialTeacher || !specialSubject || !specialClass)){ alert('請完整選擇特教老師、特生課表科目與特生班'); return; }
+    if(!specialDraft.slots.length){ alert('請先產生綁課時段'); return; }
+    const slotKeys = new Set();
+    const pending = [];
+    for(const slot of specialDraft.slots){
+      const key = `${slot.day}-${slot.period}`;
+      if(slotKeys.has(key)){ alert(`星期${slot.day}第${slot.period}節重複，請調整時段`); return; }
+      slotKeys.add(key);
+      const courses = specialDraft.participants.map((p,index) => ({
+        klass:p.klass,
+        subject:slot.subjects[index],
+        teacher:courseTeacher(p.klass,slot.subjects[index])
+      }));
+      if(courses.some(c => !c.subject || !c.teacher)){
+        alert(`星期${slot.day}第${slot.period}節有班級尚未選擇有效科目`); return;
+      }
+      if(isSpecial && state.specialBindings.some(b => b.type!=='normal' && b.klass===specialClass && b.day===slot.day && b.period===slot.period)){
+        alert(`${specialClass}特生課表在星期${slot.day}第${slot.period}節已經有課`); return;
+      }
+      pending.push(isSpecial
+        ? {type:'special', teacher:specialTeacher, subject:specialSubject, klass:specialClass, day:slot.day, period:slot.period, courses}
+        : {type:'normal', day:slot.day, period:slot.period, courses});
+    }
+    state.specialBindings.push(...pending);
+    specialDraft.slots = [];
+    renderSpecialSlotRows();
+    renderSpecialFixedTable();
+  }
+
+  function removeSpecialFixed(idx){
+    state.specialBindings.splice(idx, 1);
+    renderSpecialFixedTable();
+  }
+
+  function renderSpecialFixedTable(){
+    const tbl = document.getElementById('specialFixedTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    document.getElementById('specialFixedEmptyHint').style.display = state.specialBindings.length ? 'none' : 'block';
+    tbl.style.display = state.specialBindings.length ? 'table' : 'none';
+    state.specialBindings.forEach((binding, idx) => {
+      const tr = document.createElement('tr');
+      const ordinary = binding.courses.map(c => `${escapeHtml(c.klass)} ${escapeHtml(c.subject)}`).join('、');
+      const isNormal = binding.type === 'normal';
+      const specialCourse = isNormal ? '—' : `${escapeHtml(binding.klass || '')} ${escapeHtml(binding.subject || '')}`;
+      tr.innerHTML = `<td>${isNormal ? '一般綁班' : '特教抽離'}</td><td>${ordinary}</td><td>${specialCourse}</td><td>星期${binding.day}</td><td>第${binding.period}節</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeSpecialFixed(idx);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }
+
   // ---------- 步驟5：不可排課時段 ----------
   function initPeriodCheckGrid(){
     const grid = document.getElementById('periodCheckGrid');
@@ -754,7 +1233,7 @@
 
   function quickSelectTeachers(mode){
     document.querySelectorAll('#blockTeacherGrid input').forEach(box => {
-      box.checked = mode === 'all';
+      box.checked = mode === 'all' || box.value.endsWith(mode);
     });
   }
 
@@ -821,17 +1300,136 @@
     });
   }
 
+  // ---------- 讀取舊 input.txt ----------
+  function importInputFile(input){
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseInputText(String(reader.result || ''));
+      input.value = '';
+      if(parsed.error){
+        alert(`檔案格式有誤（第 ${parsed.error} 行），未匯入。`);
+        return;
+      }
+      applyImportedData(parsed);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function parseInputText(text){
+    const imported = {
+      schoolName:'', schoolYear:'', semester:'1',
+      courses:[], fixed:[], specialBindings:[], unavailable:[]
+    };
+    const teachers = new Set();
+    const records = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+    for(let index=0; index<records.length; index++){
+      const line = records[index].trim();
+      if(!line) continue;
+      const parts = line.split('|');
+      const tag = parts[0];
+      const invalid = parts.some(part => !part.trim());
+
+      if(tag === 'S' && parts.length === 4 && !invalid && /^\d{2,3}$/.test(parts[2]) && ['1','2'].includes(parts[3])){
+        [, imported.schoolName, imported.schoolYear, imported.semester] = parts;
+      } else if(tag === 'C' && parts.length === 5 && !invalid && /^\d+$/.test(parts[3]) && Number(parts[3]) > 0){
+        const [, teacher, subject, hours, klass] = parts;
+        imported.courses.push({teacher, subject, hours:Number(hours), klass});
+        teachers.add(teacher);
+      } else if(tag === 'F' && parts.length === 6 && !invalid && DAYS.includes(parts[4]) && PERIODS.includes(Number(parts[5]))){
+        const [, teacher, subject, klass, day, period] = parts;
+        imported.fixed.push({teacher, subject, klass, day, period:Number(period)});
+        teachers.add(teacher);
+      } else if(tag === 'SP' && parts.length === 6 && !invalid && DAYS.includes(parts[4]) && PERIODS.includes(Number(parts[5]))){
+        const [, teacher, subject, klass, day, period] = parts;
+        imported.specialBindings.push({type:'special', teacher, subject, klass, day, period:Number(period), courses:[]});
+        teachers.add(teacher);
+      } else if(tag === 'U' && parts.length === 4 && !invalid && DAYS.includes(parts[2]) && PERIODS.includes(Number(parts[3]))){
+        const [, teacher, day, period] = parts;
+        imported.unavailable.push({teacher, day, period:Number(period)});
+        teachers.add(teacher);
+      } else {
+        return {error:index + 1};
+      }
+    }
+    imported.teachers = [...teachers];
+    return imported;
+  }
+
+  function applyImportedData(data){
+    const specialClasses = new Set(data.specialBindings.map(item => item.klass));
+    const regularClasses = [
+      ...data.courses.map(item => item.klass),
+      ...data.fixed.map(item => item.klass).filter(klass => !specialClasses.has(klass))
+    ];
+    state.grades = {7:0,8:0,9:0};
+    state.specialGrades = {7:false,8:false,9:false};
+    regularClasses.forEach(klass => {
+      const grade = Number(klass[0]);
+      const number = Number(klass.slice(1));
+      if(state.grades[grade] !== undefined && Number.isInteger(number)){
+        state.grades[grade] = Math.max(state.grades[grade], number);
+      }
+    });
+    specialClasses.forEach(klass => {
+      const grade = Number(klass[0]);
+      if(state.specialGrades[grade] !== undefined) state.specialGrades[grade] = true;
+    });
+
+    state.teachers = data.teachers;
+    state.courses = data.courses;
+    state.fixed = data.fixed;
+    state.specialBindings = data.specialBindings;
+    state.unavailable = data.unavailable;
+    document.getElementById('schoolName').value = data.schoolName;
+    document.getElementById('schoolYear').value = data.schoolYear;
+    document.getElementById('semester').value = data.semester;
+
+    initGradeGrid();
+    updateClassPreview();
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderSpecialFixedTable();
+    renderBlockTable();
+    resetSpecialBindingBuilder();
+    document.getElementById('outputText').value = '';
+  }
+
   // ---------- 步驟6：產生輸出 ----------
   function generateOutput(){
     const schoolName = document.getElementById('schoolName').value.trim();
     const schoolYear = document.getElementById('schoolYear').value.trim();
     const semester = document.getElementById('semester').value;
     let lines = [`S|${schoolName}|${schoolYear}|${semester}`];
-    state.courses.forEach(c => {
+    state.courses.filter(c => !getSpecialClasses().includes(c.klass)).forEach(c => {
       lines.push(`C|${c.teacher}|${c.subject}|${c.hours}|${c.klass}`);
     });
+    const fixedLines = new Set();
     state.fixed.forEach(f => {
-      lines.push(`F|${f.teacher}|${f.subject}|${f.klass}|${f.day}|${f.period}`);
+      const line = `F|${f.teacher}|${f.subject}|${f.klass}|${f.day}|${f.period}`;
+      if(!fixedLines.has(line)){
+        lines.push(line);
+        fixedLines.add(line);
+      }
+    });
+    state.specialBindings.forEach(binding => {
+      binding.courses.forEach(course => {
+        const ordinaryLine = `F|${course.teacher}|${course.subject}|${course.klass}|${binding.day}|${binding.period}`;
+        if(!fixedLines.has(ordinaryLine)){
+          lines.push(ordinaryLine);
+          fixedLines.add(ordinaryLine);
+        }
+      });
+      if(binding.type === 'normal') return;
+      const specialLine = `F|${binding.teacher}|${binding.subject}|${binding.klass}|${binding.day}|${binding.period}`;
+      if(!fixedLines.has(specialLine)){
+        lines.push(specialLine);
+        fixedLines.add(specialLine);
+      }
+      lines.push(`SP|${binding.teacher}|${binding.subject}|${binding.klass}|${binding.day}|${binding.period}`);
     });
     state.unavailable.forEach(u => {
       lines.push(`U|${u.teacher}|${u.day}|${u.period}`);
@@ -852,7 +1450,10 @@
     const expectedClasses = getAllClasses();
     if(expectedClasses.length === 0) return [...metadataErrors, '請先在步驟1設定班級數量'];
     const totals = Object.fromEntries(expectedClasses.map(k => [k, 0]));
-    state.courses.forEach(c => { totals[c.klass] = (totals[c.klass] || 0) + c.hours; });
+    state.courses.forEach(c => {
+      if(getSpecialClasses().includes(c.klass)) return;
+      totals[c.klass] = (totals[c.klass] || 0) + c.hours;
+    });
     const errors = [...metadataErrors];
     Object.entries(totals).sort().forEach(([klass, hours]) => {
       if(!expectedClasses.includes(klass)) errors.push(`${klass}班不在步驟1設定的班級中`);
@@ -885,9 +1486,11 @@
   function resetAll(){
     if(!confirm('確定要清空所有已輸入的資料嗎？這個動作無法復原。')) return;
     state.grades = {7:0,8:0,9:0};
+    state.specialGrades = {7:false,8:false,9:false};
     state.teachers = [];
     state.courses = [];
     state.fixed = [];
+    state.specialBindings = [];
     state.unavailable = [];
     document.getElementById('schoolName').value = '';
     document.getElementById('schoolYear').value = '';
@@ -898,7 +1501,9 @@
     refreshTeacherDependentSelects();
     renderCourseTable();
     renderFixedTable();
+    renderSpecialFixedTable();
     renderBlockTable();
+    resetSpecialBindingBuilder();
     document.getElementById('outputText').value = '';
   }
 
@@ -911,7 +1516,9 @@
   refreshTeacherDependentSelects();
   renderCourseTable();
   renderFixedTable();
+  renderSpecialFixedTable();
   renderBlockTable();
+  resetSpecialBindingBuilder();
 </script>
 </body>
 </html>
