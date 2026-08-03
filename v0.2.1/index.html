@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排課資料整理小幫手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F5EF;
+    --card:#FFFFFF;
+    --ink:#20302A;
+    --ink-soft:#5B6B64;
+    --line:#DAD6C8;
+    --teal:#0F6E56;
+    --teal-dark:#0A4F3E;
+    --teal-tint:#E4F1EC;
+    --amber:#8A5A12;
+    --amber-tint:#FBF0DD;
+    --amber-line:#E4B863;
+    --red:#8A1F1F;
+    --red-tint:#FBEAEA;
+    --red-line:#E2A0A0;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif; line-height:1.7;
+    padding:0 0 80px 0;
+  }
+  h1,h2,h3{ font-family:'Noto Serif TC', serif; font-weight:700; margin:0; }
+  .wrap{ max-width:880px; margin:0 auto; padding:0 20px; }
+
+  header.top{
+    background:var(--teal-dark); color:#F3EFE4; padding:40px 0 34px;
+  }
+  header.top h1{ font-size:26px; color:#fff; }
+  header.top p{ margin:10px 0 0; color:#D9E9E3; font-size:15px; max-width:640px; }
+
+  .intro-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 24px; margin-top:-20px; box-shadow:0 6px 18px rgba(20,40,32,0.06);
+  }
+  .intro-card h2{ font-size:18px; margin-bottom:8px; }
+  .intro-card ol{ padding-left:20px; margin:10px 0 0; }
+  .intro-card li{ margin-bottom:6px; }
+
+  .warn{
+    border:1px solid var(--red-line); background:var(--red-tint); color:var(--red);
+    border-radius:10px; padding:14px 16px; font-size:14px; margin-top:16px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .warn b{ display:block; margin-bottom:2px; }
+  .warn .mark{ font-family:'Noto Serif TC',serif; font-weight:700; font-size:16px; flex-shrink:0; }
+
+  section.step{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 24px; margin-top:22px; box-shadow:0 4px 12px rgba(20,40,32,0.05);
+  }
+  .step-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .step-num{
+    width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC',serif;
+    font-weight:700; font-size:15px; flex-shrink:0;
+  }
+  .step-head h2{ font-size:18px; }
+  .step-desc{ color:var(--ink-soft); font-size:14px; margin:4px 0 18px 44px; }
+  .subsection{ margin:24px 0 14px 44px; padding-top:20px; border-top:1px solid var(--line); }
+  .subsection h3{ font-size:17px; margin-bottom:5px; }
+  .subsection p{ color:var(--ink-soft); font-size:14px; margin:0; }
+
+  label{ font-size:14px; font-weight:500; color:var(--ink); display:block; margin-bottom:6px; }
+  select, textarea, input[type=text]{
+    font-family:inherit; font-size:15px; color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    background:#fff; width:100%;
+  }
+  select:focus, textarea:focus, input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  textarea{ resize:vertical; min-height:90px; font-family:inherit; }
+
+  .grid-grades{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin-left:44px; }
+  .grade-item{ display:flex; flex-direction:column; gap:6px; }
+  .special-grade-check{ display:flex; align-items:center; gap:7px; margin:2px 0 0; color:var(--amber); font-size:13px; cursor:pointer; }
+  .special-grade-check input{ width:17px; height:17px; margin:0; }
+  .special-class-label{ color:var(--amber); font-weight:700; }
+
+  .row{ margin-left:44px; margin-bottom:16px; }
+  .row-inline{ display:flex; gap:14px; flex-wrap:wrap; margin-left:44px; margin-bottom:16px; }
+  .row-inline > div{ flex:1; min-width:140px; }
+
+  button{
+    font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;
+    border-radius:8px; border:1px solid var(--teal); background:var(--teal); color:#fff;
+    padding:9px 18px; transition:opacity .15s;
+  }
+  button:hover{ opacity:.88; }
+  button.secondary{ background:#fff; color:var(--teal); }
+  button.ghost{ background:transparent; border-color:var(--line); color:var(--ink-soft); padding:5px 10px; font-size:13px; }
+  button.danger-ghost{ background:transparent; border-color:var(--red-line); color:var(--red); padding:4px 9px; font-size:12px; }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-left:44px; margin-top:12px; }
+  .chip{
+    background:var(--teal-tint); color:var(--teal-dark); border:1px solid #BFDDD2;
+    border-radius:20px; padding:6px 8px 6px 14px; font-size:13px; display:flex; align-items:center; gap:8px;
+  }
+  .chip button{ padding:2px 7px; font-size:11px; border-radius:12px; background:#fff; color:var(--red); border:1px solid var(--red-line); }
+
+  .preview-box{ margin-left:44px; font-size:13px; color:var(--ink-soft); }
+  .preview-box .code{ font-family:monospace; background:var(--teal-tint); padding:2px 6px; border-radius:5px; color:var(--teal-dark); }
+
+  table.data-tbl{ width:calc(100% - 44px); margin-left:44px; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
+  table.data-tbl th, table.data-tbl td{ border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; }
+  table.data-tbl th{ color:var(--ink-soft); font-weight:500; font-size:12.5px; }
+  table.data-tbl td.num{ color:var(--ink-soft); }
+  .empty-hint{ margin-left:44px; color:var(--ink-soft); font-size:13.5px; font-style:normal; }
+
+  .period-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; max-width:380px; }
+  .period-grid label{ display:flex; flex-direction:column; align-items:center; gap:4px; font-size:12.5px; margin:0; cursor:pointer; }
+  .period-grid input{ width:18px; height:18px; }
+  .choice-grid{ display:flex; flex-wrap:wrap; gap:8px 14px; max-width:720px; }
+  .choice-grid label{ display:flex; align-items:center; gap:5px; margin:0; font-size:13.5px; cursor:pointer; }
+  .choice-grid input{ width:18px; height:18px; }
+  .quick-btns{ display:flex; gap:8px; margin:10px 0; }
+
+  .binding-slots{ margin:14px 0 18px 44px; }
+  .binding-slot{ border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#FBFAF6; }
+  .binding-slot-fields{ display:grid; grid-template-columns:minmax(180px,1fr) 130px 110px 100px; gap:10px; align-items:end; }
+  .binding-slot-fields.auto{ grid-template-columns:minmax(180px,1fr) 130px; }
+  .binding-auto-summary{ border:1px solid #BFDDD2; border-radius:10px; padding:10px 12px; margin-bottom:10px; background:var(--teal-tint); color:var(--teal-dark); font-size:13.5px; }
+  .binding-special-panel{ margin:18px 0 14px 44px; border:2px solid var(--amber-line); border-radius:12px; background:var(--amber-tint); overflow:hidden; }
+  .binding-special-toggle{ display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; margin:0; color:var(--amber); font-weight:700; }
+  .binding-special-toggle:hover{ background:rgba(255,255,255,.35); }
+  .binding-special-toggle input{ width:21px; height:21px; accent-color:var(--amber); }
+  .binding-special-title{ display:flex; flex-direction:column; gap:2px; }
+  .binding-special-title small{ color:var(--ink-soft); font-weight:400; }
+  .binding-special-panel .row-inline{ margin:0; padding:0 16px 16px; }
+  #bindingSpecialConfigs{ display:contents; }
+  .binding-special-config{ border-top:1px solid var(--amber-line); padding-top:12px; }
+  .binding-special-choice{ display:grid; grid-template-columns:minmax(220px,420px); margin-top:12px; padding-top:12px; border-top:1px dashed var(--amber-line); }
+  .special-auto-class{ background:var(--amber-tint); border:1px solid var(--amber-line); border-radius:8px; padding:9px 12px; min-height:43px; }
+  @media (max-width:640px){ .binding-slot-fields{ grid-template-columns:1fr 1fr; } }
+
+  .output-area{ margin-left:44px; }
+  textarea#outputText{ min-height:220px; font-family:monospace; font-size:12.5px; background:#FBFAF6; }
+  .output-actions{ display:flex; gap:10px; margin-top:12px; }
+
+  .final-steps{ margin-left:44px; background:var(--amber-tint); border:1px solid var(--amber-line); color:var(--amber);
+    border-radius:10px; padding:16px 18px; font-size:14px; margin-top:18px; }
+  .final-steps ol{ margin:8px 0 0; padding-left:20px; }
+  .final-steps li{ margin-bottom:6px; }
+
+  footer.reset-bar{ text-align:center; margin-top:30px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>排課資料整理小幫手</h1>
+    <p>用下拉選單整理課程資料，產生一份 input.txt，跟排課程式一起丟給 Claude 即可排出課表。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="intro-card">
+    <h2>使用方式</h2>
+    <ol>
+      <li>照步驟 1~6 輸入班級、老師、課程與排課條件。</li>
+      <li>按「檢查並下載 input.txt」，系統會先確認每班都是 35 節。</li>
+      <li>在同一個資料夾執行 step2scheduler.py，即可產生 Excel 課表。</li>
+    </ol>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div><b>本網站不會保存任何資料，重新整理（F5）後，已填內容會全部消失。</b></div>
+    </div>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div>
+        <b>請勿把老師的真實姓名貼給 AI</b>
+        建議用職稱（如：教學組長）或編號（如：教師01）代替，事後再用 Word、Excel 等離線軟體「尋找並取代」改回真實姓名。
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">1</div><h2>學校資料與班級數量</h2></div>
+    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再選擇七、八、九年級各有幾個班。學校名稱請勿輸入「|」。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="schoolName">學校名稱</label>
+        <input type="text" id="schoolName" placeholder="例如：○○國民中學">
+      </div>
+      <div>
+        <label for="schoolYear">學年度</label>
+        <input type="text" id="schoolYear" inputmode="numeric" placeholder="例如：115">
+      </div>
+      <div>
+        <label for="semester">學期</label>
+        <select id="semester">
+          <option value="1">第1學期</option>
+          <option value="2">第2學期</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-grades" id="gradeGrid"></div>
+
+    <div class="preview-box" style="margin-top:16px;">
+      目前產生的班級：<span id="classPreview">（尚未設定）</span>
+      <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">班級代碼使用十進位：七年級第 9、10、16 班依序為 709、710、716，不使用十六進位。</div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('courseWorkbookFile').click()">匯入配課 Excel</button>
+      <input type="file" id="courseWorkbookFile" accept=".xlsx,.xls" onchange="importCourseWorkbook(this)" style="display:none;">
+      <button type="button" class="secondary" onclick="document.getElementById('inputFile').click()">讀取 input.txt</button>
+      <input type="file" id="inputFile" accept=".txt,text/plain" onchange="importInputFile(this)" style="display:none;">
+      <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">匯入 Excel 會取代目前的教師名單、課程需求與相關排課條件。</div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">2</div><h2>教師名單</h2></div>
+    <div class="step-desc">
+      把所有老師的名稱（建議用職稱或編號）貼在下面，可以用換行、空白或逗號分開，一次貼多筆也沒問題。<br>
+      每位教師代號不可重複。<br>
+      系統會嘗試抓取關鍵字「導師」及「主任」來增加填寫方便。
+    </div>
+
+    <div class="row">
+      <label for="teacherBulk">老師名稱（一行一位，或用空白/逗號分開）</label>
+      <textarea id="teacherBulk" placeholder="例如：&#10;教學組長&#10;註冊組長&#10;七忠導師, 七孝導師"></textarea>
+    </div>
+
+    <div class="warn">
+      <span class="mark">⚠</span>
+      <div>
+        <b>再次提醒：請勿貼上老師的真實姓名</b>
+        建議用職稱或「教師01」這類編號代替，事後再用 Word、Excel 等離線軟體「尋找並取代」改回真實姓名。
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <button onclick="addTeachersFromBulk()">加入這些老師</button>
+    </div>
+
+    <div class="chips" id="teacherChips"></div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">3</div><h2>任教班級（課程需求）</h2></div>
+    <div class="step-desc">先選一位老師，再貼上這位老師教的課程，格式是「科目、堂數、班級」，班級請填純數字（例如 701）。每行一筆，欄位之間可以用空白、Tab 或逗號分開。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="courseTeacherSelect">選擇老師</label>
+        <select id="courseTeacherSelect"><option value="">請先在步驟2加入老師</option></select>
+      </div>
+    </div>
+
+    <div class="row" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
+      <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
+    </div>
+
+    <div class="row">
+      <label for="courseBulk">課程資料（科目、堂數、班級）</label>
+      <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
+    </div>
+
+    <div class="row">
+      <button onclick="addCoursesFromBulk()">加入這些課程</button>
+    </div>
+
+    <table class="data-tbl" id="courseTable" style="display:none;">
+      <thead><tr><th>老師</th><th>科目</th><th>堂數</th><th>班級</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="courseEmptyHint">目前還沒有加入任何課程。</div>
+    <div class="preview-box" id="classHoursSummary" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">4</div><h2>必排</h2></div>
+    <div class="step-desc">指定某一門課必須排在特定星期與節次。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="fixedSubjectSelect">科目</label>
+        <select id="fixedSubjectSelect" onchange="onFixedSubjectChange()"><option value="">請先完成步驟3</option></select>
+      </div>
+      <div>
+        <label for="fixedClassSelect">班級</label>
+        <select id="fixedClassSelect" onchange="onFixedClassChange()"><option value="">請先選科目</option></select>
+      </div>
+      <div>
+        <label for="fixedTeacherSelect">老師</label>
+        <select id="fixedTeacherSelect"><option value="">請先選班級</option></select>
+      </div>
+    </div>
+
+    <div class="row-inline">
+      <div>
+        <label for="fixedDaySelect">星期</label>
+        <select id="fixedDaySelect">
+          <option value="一">星期一</option><option value="二">星期二</option><option value="三">星期三</option>
+          <option value="四">星期四</option><option value="五">星期五</option>
+        </select>
+      </div>
+      <div>
+        <label for="fixedPeriodSelect">節次</label>
+        <select id="fixedPeriodSelect"></select>
+      </div>
+    </div>
+
+    <div class="row"><button onclick="addFixedAssignment()">加入必排</button></div>
+
+    <table class="data-tbl" id="fixedTable" style="display:none;">
+      <thead><tr><th>老師</th><th>科目</th><th>班級</th><th>星期</th><th>節次</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="fixedEmptyHint">目前還沒有設定必排。</div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">5</div><h2>綁課</h2></div>
+    <div class="step-desc">同科綁課可選兩個以上班級；不同科只要選擇綁定班級與科目，系統就會依各科堂數自動產生交錯組合，每堂只需決定時段與特教授課內容。</div>
+
+    <div class="row">
+      <label>綁課類型</label>
+      <div class="choice-grid">
+        <label><input type="radio" name="bindingKind" value="same" checked onchange="onBindingKindChange()"><span>同科綁課</span></label>
+        <label><input type="radio" name="bindingKind" value="cross" onchange="onBindingKindChange()"><span>不同科綁課</span></label>
+      </div>
+    </div>
+
+    <div id="sameBindingForm">
+      <div class="row-inline">
+        <div>
+          <label for="sameBindingSubject">科目</label>
+          <select id="sameBindingSubject" onchange="onSameBindingSubjectChange()"></select>
+        </div>
+      </div>
+      <div class="row">
+        <label>班級（可複選）</label>
+        <div class="choice-grid" id="sameBindingClasses"></div>
+      </div>
+      <div class="row"><button type="button" onclick="prepareSameSubjectBinding()">產生同科綁課內容</button></div>
+    </div>
+
+    <div id="crossBindingForm" style="display:none;">
+      <div class="row">
+        <label>綁定班級（可複選，至少兩班）</label>
+        <div class="choice-grid" id="crossBindingClasses"></div>
+      </div>
+      <div class="row">
+        <label>綁定科目（可複選，至少兩科）</label>
+        <div class="choice-grid" id="crossBindingSubjects"></div>
+      </div>
+      <div class="row"><button type="button" onclick="prepareCrossSubjectBinding()">自動產生交錯綁課</button></div>
+    </div>
+
+    <div class="binding-special-panel">
+      <label class="binding-special-toggle" for="bindingSpecialEnabled">
+        <input type="checkbox" id="bindingSpecialEnabled" onchange="onBindingSpecialChange()">
+        <span class="binding-special-title">
+          <span>啟用特教抽離</span>
+          <small>同科顯示 1 組；不同科會依所選科目數自動產生設定組</small>
+        </span>
+      </label>
+      <div class="row-inline" id="bindingSpecialFields" style="display:none;">
+        <div id="bindingSpecialConfigs"></div>
+        <div><label>特生班</label><div class="special-auto-class" id="bindingSpecialClass">請先設定綁課班級</div></div>
+      </div>
+    </div>
+
+    <div class="binding-slots" id="bindingDraftRows"></div>
+    <div class="row" id="addBindingDraftRow" style="display:none;">
+      <button type="button" onclick="addPreparedBinding()">加入這組綁課</button>
+    </div>
+
+    <table class="data-tbl" id="bindingTable" style="display:none;">
+      <thead><tr><th>綁課內容</th><th>堂數</th><th>時段</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="bindingEmptyHint">目前還沒有設定綁課。</div>
+  </section>
+
+  <!-- STEP 6 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">6</div><h2>老師不可排課時段</h2></div>
+    <div class="step-desc">可依科目預選老師，再選擇星期與節次。</div>
+
+    <div class="row-inline">
+      <div>
+        <label for="blockSubjectSelect">依任教科目預選老師（選填）</label>
+        <select id="blockSubjectSelect" onchange="onBlockSubjectChange()"><option value="">不依科目預選</option></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <label>老師（可複選）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectTeachers('all')">全選老師</button>
+        <button type="button" class="secondary" onclick="quickSelectTeachers('主任')">全選主任</button>
+        <button type="button" class="secondary" onclick="quickSelectTeachers('組長')">全選組長</button>
+        <button type="button" class="ghost" onclick="quickSelectTeachers('clear')">清除勾選</button>
+      </div>
+      <div class="choice-grid" id="blockTeacherGrid"></div>
+      <div id="blockTeacherHint" style="margin-top:8px; color:var(--ink-soft); font-size:13px;"></div>
+    </div>
+
+    <div class="row">
+      <label>星期（可複選）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectDays('all')">星期一至五</button>
+        <button type="button" class="ghost" onclick="quickSelectDays('clear')">清除勾選</button>
+      </div>
+      <div class="choice-grid" id="dayCheckGrid"></div>
+    </div>
+
+    <div class="row">
+      <label>節次（可複選）</label>
+      <div class="quick-btns">
+        <button type="button" class="secondary" onclick="quickSelectPeriods('am')">整個上午（1-4節）</button>
+        <button type="button" class="secondary" onclick="quickSelectPeriods('pm')">整個下午（5-7節）</button>
+        <button type="button" class="ghost" onclick="quickSelectPeriods('clear')">清除勾選</button>
+      </div>
+      <div class="period-grid" id="periodCheckGrid"></div>
+    </div>
+
+    <div class="row">
+      <button onclick="addUnavailable()">加入不可排</button>
+    </div>
+
+    <table class="data-tbl" id="blockTable" style="display:none;">
+      <thead><tr><th>老師</th><th>星期</th><th>節次</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty-hint" id="blockEmptyHint">目前還沒有設定任何不可排課時段。</div>
+  </section>
+
+  <!-- STEP 7 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">7</div><h2>產生資料檔</h2></div>
+    <div class="step-desc">系統會先確認步驟1設定的普通班都正好 35 節；特生課表只記錄特教綁課，不需要填滿35節。</div>
+
+    <div class="row">
+      <button onclick="generateAndDownload()">檢查並下載 input.txt</button>
+    </div>
+
+    <div class="output-area">
+      <textarea id="outputText" readonly placeholder="按上面的「產生資料檔」按鈕，這裡會顯示整理好的內容"></textarea>
+    </div>
+
+    <div class="final-steps">
+      <b>下一步</b>
+      把 input.txt 放在 scheduler.py 的同一個資料夾，再執行 Python 程式。
+    </div>
+  </section>
+
+  <footer class="reset-bar">
+    <button class="ghost" onclick="resetAll()">全部重新開始</button>
+  </footer>
+</div>
+
+<script>
+  const DAYS = ["一","二","三","四","五"];
+  const PERIODS = [1,2,3,4,5,6,7];
+
+  const state = {
+    grades: {7:0,8:0,9:0},
+    specialGrades: {7:false,8:false,9:false},
+    teachers: [],
+    courses: [],       // {teacher, subject, hours, klass}
+    fixed: [],         // {teacher, subject, klass, day, period}
+    specialBindings: [], // BK/BT 綁課需求（type: normal 或 special）
+    unavailable: []    // {teacher, day, period}
+  };
+
+  const GRADE_LABEL = {7:"七年級",8:"八年級",9:"九年級"};
+
+  function initGradeGrid(){
+    const grid = document.getElementById('gradeGrid');
+    grid.innerHTML = '';
+    for(let g=7; g<=9; g++){
+      const div = document.createElement('div');
+      div.className = 'grade-item';
+      const label = document.createElement('label');
+      label.textContent = GRADE_LABEL[g] + ' 班級數';
+      const sel = document.createElement('select');
+      sel.id = 'gradeSel'+g;
+      for(let n=0; n<=30; n++){
+        const opt = document.createElement('option');
+        opt.value = n; opt.textContent = n===0 ? '0（沒有）' : n+' 班';
+        sel.appendChild(opt);
+      }
+      sel.value = state.grades[g] || 0;
+      sel.onchange = () => {
+        const next = parseInt(sel.value);
+        if(next !== state.grades[g] && hasClassDependentData()){
+          const proceed = confirm('已有課程資料。變更班級數可能使原有資料對不上，建議按「取消」後使用頁面最下方的「全部重新開始」重填。\n\n仍要變更嗎？');
+          if(!proceed){
+            sel.value = state.grades[g];
+            return;
+          }
+        }
+        state.grades[g] = next;
+        if(next === 0) state.specialGrades[g] = false;
+        initGradeGrid();
+        updateClassPreview();
+        resetBindingBuilder();
+      };
+      const specialLabel = document.createElement('label');
+      specialLabel.className = 'special-grade-check';
+      const specialCheck = document.createElement('input');
+      specialCheck.type = 'checkbox';
+      specialCheck.checked = !!state.specialGrades[g];
+      specialCheck.disabled = (state.grades[g] || 0) === 0;
+      specialCheck.onchange = () => {
+        const usedSpecialBinding = state.specialBindings.find(binding =>
+          binding.type !== 'normal' && Number(String(binding.klass || '')[0]) === g
+        );
+        if(usedSpecialBinding){
+          alert(`${usedSpecialBinding.klass} 已被特教綁課使用。若要變更，請先拉到頁面最下方按「全部清除」，再重新填寫。`);
+          specialCheck.checked = state.specialGrades[g];
+          return;
+        }
+        state.specialGrades[g] = specialCheck.checked;
+        state.courses = state.courses.filter(c => !getSpecialClasses().includes(c.klass));
+        updateClassPreview();
+        renderCourseTable();
+        refreshFixedSubjectSelect();
+        refreshBlockSubjectSelect();
+        resetBindingBuilder();
+      };
+      specialLabel.appendChild(specialCheck);
+      specialLabel.appendChild(document.createTextNode(' 有特殊生班級'));
+      div.appendChild(label); div.appendChild(sel); div.appendChild(specialLabel);
+      grid.appendChild(div);
+    }
+  }
+
+  function hasClassDependentData(){
+    return state.courses.length > 0 || state.fixed.length > 0 || state.specialBindings.length > 0;
+  }
+
+  function pad2(n){ return n.toString().padStart(2,'0'); }
+
+  function getAllClasses(){
+    const list = [];
+    for(let g=7; g<=9; g++){
+      const count = state.grades[g] || 0;
+      for(let i=1; i<=count; i++){
+        list.push(`${g}${pad2(i)}`);
+      }
+    }
+    return list;
+  }
+
+  function getSpecialClass(grade){
+    const count = state.grades[grade] || 0;
+    return count > 0 && state.specialGrades[grade] ? `${grade}${pad2(count + 1)}` : '';
+  }
+
+  function getSpecialClasses(){
+    return [7,8,9].map(getSpecialClass).filter(Boolean);
+  }
+
+  function updateClassPreview(){
+    const items = [];
+    for(let g=7; g<=9; g++){
+      const count = state.grades[g] || 0;
+      for(let i=1; i<=count; i++) items.push(`${g}${pad2(i)}`);
+      const specialClass = getSpecialClass(g);
+      if(specialClass) items.push(`<span class="special-class-label">${specialClass}（特）</span>`);
+    }
+    document.getElementById('classPreview').innerHTML = items.length ? items.join('、') : '（尚未設定）';
+  }
+
+  // ---------- 步驟2：教師 ----------
+  function addTeachersFromBulk(){
+    const raw = document.getElementById('teacherBulk').value;
+    if(!raw.trim()) return;
+    const parts = raw.split(/[\n,，、\s\u3000]+/).map(s=>s.trim()).filter(Boolean);
+    parts.forEach(name => {
+      if(!state.teachers.includes(name)) state.teachers.push(name);
+    });
+    document.getElementById('teacherBulk').value = '';
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+  }
+
+  function removeTeacher(name){
+    if(!confirm(`確定要移除「${name}」嗎？相關課程設定也會一起刪除；若資料填錯，建議使用頁面最下方的「全部重新開始」重填。`)) return;
+    state.teachers = state.teachers.filter(t => t !== name);
+    // 同步移除相關資料
+    state.courses = state.courses.filter(c => c.teacher !== name);
+    state.fixed = state.fixed.filter(f => f.teacher !== name);
+    state.specialBindings = state.specialBindings.filter(b => b.teacher !== name);
+    state.unavailable = state.unavailable.filter(u => u.teacher !== name);
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBindingTable();
+    renderBlockTable();
+  }
+
+  function renderTeacherChips(){
+    const wrap = document.getElementById('teacherChips');
+    wrap.innerHTML = '';
+    state.teachers.forEach(name => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = `${escapeHtml(name)} `;
+      const btn = document.createElement('button');
+      btn.textContent = '移除';
+      btn.onclick = () => removeTeacher(name);
+      chip.appendChild(btn);
+      wrap.appendChild(chip);
+    });
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function refreshTeacherDependentSelects(){
+    const selects = [
+      document.getElementById('courseTeacherSelect')
+    ];
+    selects.forEach(sel => {
+      const current = sel.value;
+      sel.innerHTML = '';
+      if(state.teachers.length === 0){
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '請先在步驟2加入老師';
+        sel.appendChild(opt);
+        return;
+      }
+      state.teachers.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      if(state.teachers.includes(current)) sel.value = current;
+    });
+    renderBindingSpecialConfigs();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+  }
+
+  function refreshBlockSubjectSelect(){
+    const sel = document.getElementById('blockSubjectSelect');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">不依科目預選</option>';
+    const subjects = [...new Set(state.courses.map(c=>c.subject))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    if(subjects.includes(current)) sel.value = current;
+    onBlockSubjectChange();
+  }
+
+  function onBlockSubjectChange(){
+    const subject = document.getElementById('blockSubjectSelect').value;
+    const matched = new Set(subject
+      ? state.courses.filter(c=>c.subject===subject).map(c=>c.teacher)
+      : []);
+    const grid = document.getElementById('blockTeacherGrid');
+    grid.innerHTML = '';
+    state.teachers.forEach(name => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = name; input.checked = matched.has(name);
+      const span = document.createElement('span');
+      span.textContent = name;
+      label.appendChild(input); label.appendChild(span);
+      grid.appendChild(label);
+    });
+    const hint = document.getElementById('blockTeacherHint');
+    if(state.teachers.length === 0) hint.textContent = '請先在步驟2加入老師';
+    else if(subject) hint.textContent = `已依「${subject}」預選 ${matched.size} 位老師；可在上方取消跨領域教師。`;
+    else hint.textContent = '請自行勾選老師，或先選擇科目自動預選。';
+  }
+
+  function refreshFixedSubjectSelect(){
+    const sel = document.getElementById('fixedSubjectSelect');
+    const current = sel.value;
+    sel.innerHTML = '';
+    const subjects = [...new Set(state.courses.map(c=>c.subject))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    if(subjects.length === 0){
+      const opt = document.createElement('option');
+      opt.value=''; opt.textContent = '請先在步驟3輸入課程';
+      sel.appendChild(opt);
+    } else {
+      subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        sel.appendChild(opt);
+      });
+      if(subjects.includes(current)) sel.value = current;
+    }
+    onFixedSubjectChange();
+  }
+
+  // ---------- 步驟3：課程 ----------
+  function addCoursesFromBulk(){
+    const teacher = document.getElementById('courseTeacherSelect').value;
+    if(!teacher){ alert('請先選擇老師'); return; }
+    const raw = document.getElementById('courseBulk').value;
+    if(!raw.trim()) return;
+    const lines = raw.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+    let errorLines = [];
+    lines.forEach(line => {
+      const parts = line.replace(/[,，\t]+/g,' ').trim().split(/\s+/);
+      if(parts.length !== 3){ errorLines.push(line); return; }
+      const [subject, hoursStr, klass] = parts;
+      const hours = parseInt(hoursStr);
+      if(isNaN(hours) || hours <= 0){ errorLines.push(line); return; }
+      if(getSpecialClasses().includes(klass)) return; // 特生班課表只由 BK/BT 綁課產生，忽略誤填的 C
+      state.courses.push({teacher, subject, hours, klass});
+    });
+    document.getElementById('courseBulk').value = '';
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+    resetBindingBuilder();
+    if(document.getElementById('autoNextTeacher').checked){
+      switchToNextTeacher();
+    }
+    if(errorLines.length){
+      alert('以下幾行格式看起來不對，已略過：\n' + errorLines.join('\n') + '\n\n請確認格式是「科目 堂數 班級」，例如：體育 2 801');
+    }
+  }
+
+  function switchToNextTeacher(){
+    const sel = document.getElementById('courseTeacherSelect');
+    const idx = state.teachers.indexOf(sel.value);
+    if(idx !== -1 && idx < state.teachers.length - 1){
+      sel.value = state.teachers[idx + 1];
+    }
+  }
+
+  function removeCourse(idx){
+    state.courses.splice(idx,1);
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+    resetBindingBuilder();
+  }
+
+  function renderCourseTable(){
+    const tbl = document.getElementById('courseTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    document.getElementById('courseEmptyHint').style.display = state.courses.length ? 'none' : 'block';
+    tbl.style.display = state.courses.length ? 'table' : 'none';
+    // 由新到舊排序，最新加入的排最上面，才不用捲到最下面確認
+    state.courses.map((c, idx) => ({c, idx})).reverse().forEach(({c, idx}) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(c.teacher)}</td><td>${escapeHtml(c.subject)}</td><td class="num">${c.hours}</td><td>${escapeHtml(c.klass)}</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeCourse(idx);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+    updateClassHoursSummary();
+  }
+
+  function updateClassHoursSummary(){
+    const box = document.getElementById('classHoursSummary');
+    if(state.courses.length === 0){ box.innerHTML = ''; return; }
+    const totalSlots = DAYS.length * PERIODS.length; // 一週總時段數（一班應該剛好排滿這麼多節）
+    const hoursByClass = {};
+    getAllClasses().forEach(k => { hoursByClass[k] = 0; }); // 步驟1設定過的班級也列出來，就算目前0堂也能發現漏排
+    state.courses.filter(c => !getSpecialClasses().includes(c.klass)).forEach(c => {
+      hoursByClass[c.klass] = (hoursByClass[c.klass] || 0) + c.hours;
+    });
+    let allOk = true;
+    const rows = Object.keys(hoursByClass).sort().map(klass => {
+      const hours = hoursByClass[klass];
+      const diff = hours - totalSlots;
+      let style = '', note = '';
+      if(diff > 0){
+        style = 'color:var(--red); font-weight:700;'; note = `　⚠ 超過 ${diff} 堂（應為 ${totalSlots} 堂）`; allOk = false;
+      } else if(diff < 0){
+        style = 'color:var(--amber); font-weight:700;'; note = `　⚠ 還差 ${-diff} 堂（應為 ${totalSlots} 堂）`; allOk = false;
+      }
+      return `<div style="${style}">${escapeHtml(klass)}班：共 ${hours} 堂課${note}</div>`;
+    });
+    const summaryLine = allOk
+      ? `<div style="color:var(--teal-dark); font-weight:700;">✅ 所有班級都剛好 ${totalSlots} 堂課</div>`
+      : `<div style="color:var(--red); font-weight:700;">⚠ 並非所有班級都剛好 ${totalSlots} 堂課，請檢查下方明細</div>`;
+    box.innerHTML = summaryLine + '<b>各班級目前總堂數：</b>' + rows.join('');
+  }
+  // ---------- 步驟4：必排條件 ----------
+  function initPeriodSelectFixed(){
+    ['fixedPeriodSelect'].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = '';
+      PERIODS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = '第'+p+'節';
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function onFixedSubjectChange(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const classSel = document.getElementById('fixedClassSelect');
+    classSel.innerHTML = '';
+    const classes = [...new Set(state.courses.filter(c=>c.subject===subject).map(c=>c.klass))]
+      .sort((a,b) => Number(a) - Number(b));
+    if(classes.length === 0){
+      const opt = document.createElement('option');
+      opt.value=''; opt.textContent = subject ? '此科目尚未輸入課程' : '請先選科目';
+      classSel.appendChild(opt);
+    } else {
+      classes.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k; opt.textContent = k+'班';
+        classSel.appendChild(opt);
+      });
+    }
+    onFixedClassChange();
+  }
+
+  function onFixedClassChange(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const klass = document.getElementById('fixedClassSelect').value;
+    const teacherSel = document.getElementById('fixedTeacherSelect');
+    const teachers = [...new Set(state.courses
+      .filter(c => c.klass===klass && c.subject===subject)
+      .map(c => c.teacher))]
+      .sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+    teacherSel.innerHTML = '';
+    if(teachers.length === 0){
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = '請先選班級';
+      teacherSel.appendChild(opt);
+      return;
+    }
+    teachers.forEach(teacher => {
+      const opt = document.createElement('option');
+      opt.value = teacher; opt.textContent = teacher;
+      teacherSel.appendChild(opt);
+    });
+  }
+
+  function addFixedAssignment(){
+    const subject = document.getElementById('fixedSubjectSelect').value;
+    const klass = document.getElementById('fixedClassSelect').value;
+    const teacher = document.getElementById('fixedTeacherSelect').value;
+    const day = document.getElementById('fixedDaySelect').value;
+    const period = parseInt(document.getElementById('fixedPeriodSelect').value);
+    const match = state.courses.find(c => c.teacher===teacher && c.klass===klass && c.subject===subject);
+    if(!match){ alert('請確認科目、班級及老師都已選擇'); return; }
+    const exists = state.fixed.some(f => f.teacher===teacher && f.subject===subject && f.klass===klass && f.day===day && f.period===period);
+    if(exists){ alert('這筆必排條件已經加入過了'); return; }
+    state.fixed.push({teacher, subject, klass, day, period});
+    renderFixedTable();
+    // 科目、星期、節次都保留不變，只切換班級到下一個（同科目常常連續設定不同班級）
+    const classSel = document.getElementById('fixedClassSelect');
+    const idx = [...classSel.options].findIndex(o => o.value === klass);
+    if(idx !== -1 && idx < classSel.options.length - 1){
+      classSel.selectedIndex = idx + 1;
+      onFixedClassChange();
+    }
+  }
+
+  function removeFixed(idx){
+    state.fixed.splice(idx,1);
+    renderFixedTable();
+  }
+
+  function renderFixedTable(){
+    const tbl = document.getElementById('fixedTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    document.getElementById('fixedEmptyHint').style.display = state.fixed.length ? 'none' : 'block';
+    tbl.style.display = state.fixed.length ? 'table' : 'none';
+    state.fixed.forEach((f, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(f.teacher)}</td><td>${escapeHtml(f.subject)}</td><td>${escapeHtml(f.klass)}</td><td>星期${f.day}</td><td>第${f.period}節</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeFixed(idx);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function subjectsForClass(klass){
+    return [...new Set(state.courses.filter(c => c.klass===klass).map(c => c.subject))]
+      .sort((a,b) => courseHours(klass,b) - courseHours(klass,a) || a.localeCompare(b, 'zh-Hant'));
+  }
+
+  function courseHours(klass, subject){
+    return state.courses.filter(c => c.klass===klass && c.subject===subject)
+      .reduce((sum,c) => sum + c.hours, 0);
+  }
+
+  function courseTeacher(klass, subject){
+    const course = state.courses.find(c => c.klass===klass && c.subject===subject);
+    return course ? course.teacher : '';
+  }
+
+  function nextBindingGroupNumber(){
+    return state.specialBindings.reduce((maxNumber, binding) => {
+      const match = String(binding.groupId || '').match(/^G(\d+)$/);
+      return match ? Math.max(maxNumber, Number(match[1])) : maxNumber;
+    }, 0) + 1;
+  }
+
+  function formatBindingGroupId(number){
+    return `G${String(number).padStart(3,'0')}`;
+  }
+
+  let bindingDraft = [];
+  let bindingDraftMeta = {classes:[], subjects:[]};
+  let bindingSpecialConfigs = [];
+
+  function onBindingKindChange(){
+    const kind = document.querySelector('input[name="bindingKind"]:checked').value;
+    document.getElementById('sameBindingForm').style.display = kind === 'same' ? 'block' : 'none';
+    document.getElementById('crossBindingForm').style.display = kind === 'cross' ? 'block' : 'none';
+    renderBindingSpecialConfigs();
+    bindingDraft = [];
+    renderBindingDraft();
+    updateBindingSpecialClass();
+  }
+
+  function onBindingSpecialChange(){
+    document.getElementById('bindingSpecialFields').style.display =
+      document.getElementById('bindingSpecialEnabled').checked ? 'grid' : 'none';
+    renderBindingSpecialConfigs();
+    updateBindingSpecialClass();
+    renderBindingDraft();
+  }
+
+  function selectedSpecialConfigKeys(){
+    const kind = document.querySelector('input[name="bindingKind"]:checked')?.value || 'same';
+    if(kind === 'same'){
+      const subject = document.getElementById('sameBindingSubject')?.value;
+      return subject ? [subject] : [];
+    }
+    return [...document.querySelectorAll('#crossBindingSubjects input:checked')].map(input => input.value);
+  }
+
+  function renderBindingSpecialConfigs(){
+    const wrap = document.getElementById('bindingSpecialConfigs');
+    if(!wrap) return;
+    const kind = document.querySelector('input[name="bindingKind"]:checked')?.value || 'same';
+    const previous = new Map(bindingSpecialConfigs.map(config => [config.key,config]));
+    bindingSpecialConfigs = selectedSpecialConfigKeys().map(key => previous.get(key) || {key,teacher:'',subject:key});
+    wrap.innerHTML = '';
+    if(!bindingSpecialConfigs.length){
+      const hint = document.createElement('div');
+      hint.className = 'binding-special-config'; hint.textContent = kind === 'same' ? '請先選擇科目' : '請先勾選要綁課的科目';
+      wrap.appendChild(hint); return;
+    }
+    bindingSpecialConfigs.forEach((config,index) => {
+      const teacherBox = document.createElement('div'); teacherBox.className = 'binding-special-config';
+      const teacherLabel = document.createElement('label'); teacherLabel.textContent = kind === 'same' ? '特教老師' : `${config.key}：老師`;
+      const teacherSelect = document.createElement('select');
+      if(!state.teachers.length){
+        teacherSelect.innerHTML = '<option value="">請先在步驟2加入老師</option>';
+      } else {
+        teacherSelect.innerHTML = '<option value="">請選擇老師</option>';
+        state.teachers.forEach(name => {
+          const option = document.createElement('option'); option.value = name; option.textContent = name;
+          teacherSelect.appendChild(option);
+        });
+        if(state.teachers.includes(config.teacher)) teacherSelect.value = config.teacher;
+      }
+      teacherSelect.onchange = () => { bindingSpecialConfigs[index].teacher = teacherSelect.value; renderBindingDraft(); };
+      teacherBox.append(teacherLabel,teacherSelect);
+
+      const subjectBox = document.createElement('div'); subjectBox.className = 'binding-special-config';
+      const subjectLabel = document.createElement('label'); subjectLabel.textContent = kind === 'same' ? '特教科目' : `${config.key}：特教科目`;
+      const subjectInput = document.createElement('input'); subjectInput.type = 'text'; subjectInput.value = config.subject;
+      subjectInput.placeholder = `例如：${config.key}`;
+      subjectInput.oninput = () => { bindingSpecialConfigs[index].subject = subjectInput.value; renderBindingDraft(); };
+      subjectBox.append(subjectLabel,subjectInput);
+      wrap.append(teacherBox,subjectBox);
+    });
+  }
+
+  function fillSelect(select, values, label){
+    const current = select.value;
+    select.innerHTML = '';
+    if(!values.length){
+      const option = document.createElement('option');
+      option.value = ''; option.textContent = label;
+      select.appendChild(option);
+      return;
+    }
+    values.forEach(value => {
+      const option = document.createElement('option');
+      option.value = value; option.textContent = value;
+      select.appendChild(option);
+    });
+    if(values.includes(current)) select.value = current;
+  }
+
+  function resetBindingBuilder(){
+    bindingDraft = [];
+    renderBindingDraft();
+    const subjects = [...new Set(state.courses.map(course => course.subject))]
+      .sort((a,b) => {
+        const hoursA = Math.max(...state.courses.filter(course => course.subject === a).map(course => course.hours));
+        const hoursB = Math.max(...state.courses.filter(course => course.subject === b).map(course => course.hours));
+        return hoursB - hoursA || a.localeCompare(b, 'zh-Hant');
+      });
+    fillSelect(document.getElementById('sameBindingSubject'), subjects, '請先完成步驟3');
+    renderSameBindingClasses();
+
+    renderCrossBindingClasses();
+    renderBindingSpecialConfigs();
+    updateBindingSpecialClass();
+  }
+
+  function onSameBindingSubjectChange(){
+    bindingDraft = [];
+    renderSameBindingClasses();
+    renderBindingSpecialConfigs();
+    renderBindingDraft();
+  }
+
+  function renderSameBindingClasses(){
+    const subject = document.getElementById('sameBindingSubject').value;
+    const wrap = document.getElementById('sameBindingClasses');
+    wrap.innerHTML = '';
+    getAllClasses().filter(klass => courseHours(klass, subject) > 0).forEach(klass => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = klass;
+      input.onchange = updateBindingSpecialClass;
+      label.append(input, document.createTextNode(`${klass}班（${courseHours(klass,subject)}堂）`));
+      wrap.appendChild(label);
+    });
+    if(!wrap.children.length) wrap.textContent = '找不到這個科目的課程';
+  }
+
+  function renderCrossBindingClasses(){
+    const wrap = document.getElementById('crossBindingClasses');
+    wrap.innerHTML = '';
+    getAllClasses().forEach(klass => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = klass;
+      input.onchange = () => { renderCrossBindingSubjects(); updateBindingSpecialClass(); };
+      label.append(input, document.createTextNode(`${klass}班`));
+      wrap.appendChild(label);
+    });
+    if(!wrap.children.length) wrap.textContent = '請先設定班級';
+    renderCrossBindingSubjects();
+  }
+
+  function renderCrossBindingSubjects(){
+    const wrap = document.getElementById('crossBindingSubjects');
+    const selected = new Set([...wrap.querySelectorAll('input:checked')].map(input => input.value));
+    const classes = [...document.querySelectorAll('#crossBindingClasses input:checked')].map(input => input.value);
+    wrap.innerHTML = '';
+    if(!classes.length){ wrap.textContent = '請先選擇班級'; return; }
+    const subjects = subjectsForClass(classes[0]).filter(subject =>
+      classes.every(klass => courseHours(klass, subject) > 0)
+    );
+    subjects.forEach(subject => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = subject; input.checked = selected.has(subject);
+      input.onchange = () => {
+        bindingDraft = [];
+        renderBindingSpecialConfigs();
+        renderBindingDraft();
+      };
+      label.append(input, document.createTextNode(subject));
+      wrap.appendChild(label);
+    });
+    if(!wrap.children.length) wrap.textContent = '所選班級沒有共同科目';
+    updateBindingSpecialClass();
+  }
+
+  function selectedBindingClasses(){
+    const kind = document.querySelector('input[name="bindingKind"]:checked').value;
+    return kind === 'same'
+      ? [...document.querySelectorAll('#sameBindingClasses input:checked')].map(input => input.value)
+      : [...document.querySelectorAll('#crossBindingClasses input:checked')].map(input => input.value);
+  }
+
+  function bindingClassesForSpecial(){
+    return bindingDraft.length
+      ? bindingDraftMeta.classes
+      : selectedBindingClasses();
+  }
+
+  function updateBindingSpecialClass(){
+    const box = document.getElementById('bindingSpecialClass');
+    if(!box) return;
+    const grades = [...new Set(bindingClassesForSpecial().map(klass => klass[0]))];
+    const klass = grades.length === 1 ? getSpecialClass(Number(grades[0])) : '';
+    box.textContent = klass ? `${klass}（特）` : '請在步驟1設定對應年級的特生班';
+  }
+
+  function prepareBindingDraft(slotCount, classes, subjects, specialOptions = []){
+    bindingDraftMeta = {classes:[...classes], subjects:subjects.map(item => ({...item}))};
+    bindingDraft = Array.from({length:slotCount}, (_,index) => ({
+      mode:'AUTO', day:DAYS[index % DAYS.length], period:Math.floor(index / DAYS.length) + 1,
+      specialOption:specialOptions[index] ?? null
+    }));
+    renderBindingDraft();
+    updateBindingSpecialClass();
+  }
+
+  function prepareSameSubjectBinding(){
+    const subject = document.getElementById('sameBindingSubject').value;
+    const classes = [...document.querySelectorAll('#sameBindingClasses input:checked')].map(input => input.value);
+    if(classes.length < 2){ alert('請至少選擇兩個班級'); return; }
+    if(new Set(classes.map(klass => klass[0])).size > 1){ alert('同科綁課必須是同年級班級'); return; }
+    const hours = classes.map(klass => courseHours(klass, subject));
+    if(hours.some(value => !value)){ alert('找不到課程'); return; }
+    if(new Set(hours).size > 1){ alert('各班同科堂數不一致'); return; }
+    prepareBindingDraft(hours[0], classes, [{subject, hours:hours[0]}]);
+  }
+
+  function makeInterleavedSubjectSequence(subjects, hours){
+    const total = hours.reduce((sum,value) => sum + value, 0);
+    const remaining = [...hours];
+    const scores = Array(subjects.length).fill(0);
+    const sequence = [];
+    while(sequence.length < total){
+      scores.forEach((_,index) => { scores[index] += hours[index]; });
+      let selected = -1;
+      for(let index=0; index<subjects.length; index++){
+        if(remaining[index] > 0 && (selected < 0 || scores[index] > scores[selected])) selected = index;
+      }
+      sequence.push(subjects[selected]);
+      remaining[selected]--;
+      scores[selected] -= total;
+    }
+    return sequence;
+  }
+
+  function prepareCrossSubjectBinding(){
+    const classes = [...document.querySelectorAll('#crossBindingClasses input:checked')].map(input => input.value);
+    const subjects = [...document.querySelectorAll('#crossBindingSubjects input:checked')].map(input => input.value);
+    if(classes.length < 2){ alert('請至少選擇兩個班級'); return; }
+    if(new Set(classes.map(klass => klass[0])).size > 1){ alert('不同科綁課必須是同年級班級'); return; }
+    if(subjects.length < 2){ alert('請至少選擇兩個科目'); return; }
+
+    const hours = subjects.map(subject => courseHours(classes[0], subject));
+    if(classes.some(klass => subjects.some((subject,index) => courseHours(klass, subject) !== hours[index]))){
+      alert('各班同科堂數必須一致'); return;
+    }
+
+    const base = makeInterleavedSubjectSequence(subjects, hours);
+    const specialOptions = base.map(subject => subjects.indexOf(subject));
+    prepareBindingDraft(base.length, classes, subjects.map((subject,index) => ({subject,hours:hours[index]})), specialOptions);
+  }
+
+  function renderBindingDraft(){
+    const wrap = document.getElementById('bindingDraftRows');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    document.getElementById('addBindingDraftRow').style.display = bindingDraft.length ? 'block' : 'none';
+    const bindingKind = document.querySelector('input[name="bindingKind"]:checked').value;
+    if(bindingDraft.length && bindingKind === 'cross'){
+      const summary = document.createElement('div');
+      summary.className = 'binding-auto-summary';
+      summary.textContent = `普通班科目交錯交由排課程式決定：${bindingDraftMeta.classes.join('、')}；${bindingDraftMeta.subjects.map(item => `${item.subject} ${item.hours}堂`).join('、')}`;
+      wrap.appendChild(summary);
+    }
+    bindingDraft.forEach((slot,index) => {
+      const row = document.createElement('div');
+      row.className = 'binding-slot';
+      const fields = document.createElement('div');
+      fields.className = `binding-slot-fields${slot.mode === 'AUTO' ? ' auto' : ''}`;
+
+      const description = document.createElement('div');
+      const descriptionLabel = document.createElement('label'); descriptionLabel.textContent = `第${index+1}堂`;
+      const descriptionText = document.createElement('div');
+      descriptionText.textContent = bindingKind === 'same'
+        ? `${bindingDraftMeta.classes.join('、')}：${bindingDraftMeta.subjects[0]?.subject || ''}`
+        : '各班科目由排課程式自動交錯';
+      description.append(descriptionLabel,descriptionText);
+
+      const modeBox = document.createElement('div');
+      const modeLabel = document.createElement('label'); modeLabel.textContent = '時段';
+      const modeSelect = document.createElement('select');
+      modeSelect.innerHTML = '<option value="AUTO">系統安排</option><option value="FIXED">指定時段</option>';
+      modeSelect.value = slot.mode;
+      modeSelect.onchange = () => { slot.mode = modeSelect.value; renderBindingDraft(); };
+      modeBox.append(modeLabel,modeSelect);
+
+      const dayBox = document.createElement('div');
+      const dayLabel = document.createElement('label'); dayLabel.textContent = '星期';
+      const daySelect = document.createElement('select');
+      DAYS.forEach(day => {
+        const option = document.createElement('option'); option.value=day; option.textContent='星期'+day; daySelect.appendChild(option);
+      });
+      daySelect.value = slot.day; daySelect.disabled = slot.mode === 'AUTO';
+      daySelect.onchange = () => { slot.day = daySelect.value; };
+      dayBox.append(dayLabel,daySelect);
+
+      const periodBox = document.createElement('div');
+      const periodLabel = document.createElement('label'); periodLabel.textContent = '節次';
+      const periodSelect = document.createElement('select');
+      PERIODS.forEach(period => {
+        const option = document.createElement('option'); option.value=period; option.textContent='第'+period+'節'; periodSelect.appendChild(option);
+      });
+      periodSelect.value = slot.period; periodSelect.disabled = slot.mode === 'AUTO';
+      periodSelect.onchange = () => { slot.period = Number(periodSelect.value); };
+      periodBox.append(periodLabel,periodSelect);
+
+      fields.append(description,modeBox);
+      if(slot.mode === 'FIXED') fields.append(dayBox,periodBox);
+      row.appendChild(fields);
+      if(document.getElementById('bindingSpecialEnabled').checked && bindingKind === 'cross'){
+        const specialBox = document.createElement('div');
+        specialBox.className = 'binding-special-choice';
+        const specialLabel = document.createElement('label');
+        specialLabel.textContent = '這一堂要讓特教老師上哪一科';
+        const specialSelect = document.createElement('select');
+        specialSelect.innerHTML = '<option value="">請逐堂選擇</option>' + bindingSpecialConfigs.map((config,configIndex) =>
+          `<option value="${configIndex}">${escapeHtml(config.key)}：${escapeHtml(config.subject || '尚未填科目')}／${escapeHtml(config.teacher || '尚未選老師')}</option>`
+        ).join('');
+        specialSelect.value = slot.specialOption ?? '';
+        specialSelect.onchange = () => { slot.specialOption = specialSelect.value === '' ? null : Number(specialSelect.value); };
+        specialBox.append(specialLabel,specialSelect);
+        row.appendChild(specialBox);
+      }
+      wrap.appendChild(row);
+    });
+  }
+
+  function addPreparedBinding(){
+    if(!bindingDraft.length) return;
+    const specialEnabled = document.getElementById('bindingSpecialEnabled').checked;
+    const kind = document.querySelector('input[name="bindingKind"]:checked').value;
+    const grades = [...new Set(bindingClassesForSpecial().map(klass => klass[0]))];
+    const specialClass = grades.length === 1 ? getSpecialClass(Number(grades[0])) : '';
+    if(specialEnabled && (!bindingSpecialConfigs.length || bindingSpecialConfigs.some(config => !config.teacher || !config.subject.trim()) || !specialClass)){
+      alert(kind === 'same' ? '請完整填寫特教老師、科目與特生班' : `請完整填寫 ${bindingSpecialConfigs.length} 組特教老師、科目與特生班`); return;
+    }
+    if(specialEnabled && kind === 'cross' && bindingDraft.some(slot => !Number.isInteger(slot.specialOption) || slot.specialOption < 0 || slot.specialOption >= bindingSpecialConfigs.length)){
+      alert('請逐堂選擇特教課程'); return;
+    }
+    const fixedTimes = bindingDraft.filter(slot => slot.mode==='FIXED').map(slot => `${slot.day}-${slot.period}`);
+    if(new Set(fixedTimes).size !== fixedTimes.length){ alert('指定時段不可重複'); return; }
+
+    const bindingSetId = `K${Date.now()}`;
+    let groupNumber = nextBindingGroupNumber();
+    bindingDraft.forEach(slot => {
+      const specialOption = kind === 'same' ? 0 : slot.specialOption;
+      const specialConfig = specialEnabled ? bindingSpecialConfigs[specialOption] : {teacher:'',subject:''};
+      state.specialBindings.push({
+        groupId:formatBindingGroupId(groupNumber++), bindingSetId, kind,
+        mode:slot.mode, type:specialEnabled ? 'special' : 'normal',
+        teacher:specialConfig.teacher, subject:specialConfig.subject, klass:specialClass,
+        day:slot.mode==='AUTO' ? '-' : slot.day,
+        period:slot.mode==='AUTO' ? '-' : slot.period,
+        classes:[...bindingDraftMeta.classes], subjects:bindingDraftMeta.subjects.map(item => ({...item}))
+      });
+    });
+    bindingDraft = [];
+    renderBindingDraft();
+    renderBindingTable();
+  }
+
+  function renderBindingTable(){
+    const table = document.getElementById('bindingTable');
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML = '';
+    const sets = new Map();
+    state.specialBindings.forEach((binding,index) => {
+      const key = binding.bindingSetId || binding.groupId || `old-${index}`;
+      if(!sets.has(key)) sets.set(key, {indices:[], bindings:[]});
+      sets.get(key).indices.push(index);
+      sets.get(key).bindings.push(binding);
+    });
+    table.style.display = sets.size ? 'table' : 'none';
+    document.getElementById('bindingEmptyHint').style.display = sets.size ? 'none' : 'block';
+    sets.forEach(set => {
+      const descriptions = [...new Set(set.bindings.map(binding =>
+        `${binding.classes.map(escapeHtml).join('、')}：${binding.subjects.map(item => `${escapeHtml(item.subject)} ${item.hours}堂`).join('、')}`
+      ))];
+      const specialDescriptions = [...new Set(set.bindings
+        .filter(binding => binding.type !== 'normal' && binding.klass)
+        .map(binding => `${escapeHtml(binding.klass)} ${escapeHtml(binding.subject)}／${escapeHtml(binding.teacher)}（特教）`)
+      )];
+      descriptions.push(...specialDescriptions);
+      const fixedCount = set.bindings.filter(binding => binding.mode === 'FIXED').length;
+      const schedule = fixedCount === 0 ? '系統安排' : fixedCount === set.bindings.length ? '全部指定' : `指定${fixedCount}堂`;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${descriptions.join('；')}</td><td>${set.bindings.length}</td><td>${schedule}</td><td></td>`;
+      const button = document.createElement('button');
+      button.className = 'danger-ghost'; button.textContent = '刪除';
+      button.onclick = () => {
+        const indices = new Set(set.indices);
+        state.specialBindings = state.specialBindings.filter((_,index) => !indices.has(index));
+        renderBindingTable();
+      };
+      tr.lastElementChild.appendChild(button);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- 步驟6：不可排課時段 ----------
+  function initPeriodCheckGrid(){
+    const grid = document.getElementById('periodCheckGrid');
+    grid.innerHTML = '';
+    PERIODS.forEach(p => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" value="${p}"><span>第${p}節</span>`;
+      grid.appendChild(label);
+    });
+  }
+
+  function initDayCheckGrid(){
+    const grid = document.getElementById('dayCheckGrid');
+    grid.innerHTML = '';
+    DAYS.forEach(day => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" value="${day}"><span>星期${day}</span>`;
+      grid.appendChild(label);
+    });
+  }
+
+  function quickSelectTeachers(mode){
+    document.querySelectorAll('#blockTeacherGrid input').forEach(box => {
+      box.checked = mode === 'all' || box.value.endsWith(mode);
+    });
+  }
+
+  function quickSelectDays(mode){
+    document.querySelectorAll('#dayCheckGrid input').forEach(box => {
+      box.checked = mode === 'all';
+    });
+  }
+
+  function quickSelectPeriods(mode){
+    const boxes = document.querySelectorAll('#periodCheckGrid input');
+    boxes.forEach(b => {
+      const p = parseInt(b.value);
+      if(mode==='am') b.checked = (p>=1 && p<=4);
+      else if(mode==='pm') b.checked = (p>=5 && p<=7);
+      else if(mode==='clear') b.checked = false;
+    });
+  }
+
+  function addUnavailable(){
+    const teachers = [...document.querySelectorAll('#blockTeacherGrid input:checked')].map(b=>b.value);
+    const days = [...document.querySelectorAll('#dayCheckGrid input:checked')].map(b=>b.value);
+    const periods = [...document.querySelectorAll('#periodCheckGrid input:checked')].map(b=>parseInt(b.value));
+    if(teachers.length === 0){ alert('請至少勾選一位老師'); return; }
+    if(days.length === 0){ alert('請至少勾選一個星期'); return; }
+    if(periods.length === 0){ alert('請至少勾選一個節次'); return; }
+    teachers.forEach(teacher => days.forEach(day => periods.forEach(period => {
+      const exists = state.unavailable.some(u =>
+        u.teacher===teacher && u.day===day && u.period===period
+      );
+      if(!exists) state.unavailable.push({teacher, day, period});
+    })));
+    renderBlockTable();
+  }
+
+  function removeUnavailableGroup(teacher, day){
+    state.unavailable = state.unavailable.filter(u => !(u.teacher===teacher && u.day===day));
+    renderBlockTable();
+  }
+
+  function renderBlockTable(){
+    const tbl = document.getElementById('blockTable');
+    const tbody = tbl.querySelector('tbody');
+    tbody.innerHTML = '';
+    // 依老師+星期分組顯示，比較好讀
+    const groups = {};
+    state.unavailable.forEach(u => {
+      const key = u.teacher+'|'+u.day;
+      if(!groups[key]) groups[key] = {teacher:u.teacher, day:u.day, periods:[]};
+      groups[key].periods.push(u.period);
+    });
+    const groupList = Object.values(groups);
+    document.getElementById('blockEmptyHint').style.display = groupList.length ? 'none' : 'block';
+    tbl.style.display = groupList.length ? 'table' : 'none';
+    groupList.forEach(g => {
+      g.periods.sort((a,b)=>a-b);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(g.teacher)}</td><td>星期${g.day}</td><td>第 ${g.periods.join('、')} 節</td><td></td>`;
+      const btn = document.createElement('button');
+      btn.className = 'danger-ghost'; btn.textContent = '刪除';
+      btn.onclick = () => removeUnavailableGroup(g.teacher, g.day);
+      tr.lastElementChild.appendChild(btn);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- 匯入配課 Excel ----------
+  async function importCourseWorkbook(input){
+    const file = input.files[0];
+    if(!file) return;
+    try{
+      if(typeof XLSX === 'undefined') throw new Error('Excel 讀取元件尚未載入，請確認網路連線後重試');
+      const workbook = XLSX.read(await file.arrayBuffer(), {type:'array'});
+      const imported = parseStandardCourseWorkbook(workbook) || parseLegacyCourseWorkbook(workbook);
+      if(!imported || !imported.teachers.length) throw new Error('找不到可匯入的教師資料');
+      applyCourseWorkbookData(imported);
+      alert(`已匯入 ${imported.teachers.length} 位教師、${imported.courses.length} 筆課程${imported.ignored ? `，忽略 ${imported.ignored} 筆非三位數班級資料` : ''}`);
+    } catch(error){
+      alert(`Excel 匯入失敗：${error.message}`);
+    } finally {
+      input.value = '';
+    }
+  }
+
+  function parseStandardCourseWorkbook(workbook){
+    const teacherSheet = workbook.Sheets['教師名單'];
+    const courseSheet = workbook.Sheets['課程需求'];
+    if(!teacherSheet || !courseSheet) return null;
+    const teacherRows = XLSX.utils.sheet_to_json(teacherSheet, {defval:''});
+    const courseRows = XLSX.utils.sheet_to_json(courseSheet, {defval:''});
+    const teachers = [];
+    const teacherSet = new Set();
+    teacherRows.forEach(row => addImportedTeacher(teachers, teacherSet, row['教師名稱']));
+    const courses = [];
+    let ignored = 0;
+    courseRows.forEach(row => {
+      const teacher = String(row['教師名稱'] || '').trim();
+      const subject = String(row['科目'] || '').trim();
+      const hours = Number(row['堂數']);
+      const klass = String(row['班級'] || '').trim();
+      if(!teacher || !subject || !Number.isFinite(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
+        if(teacher || subject || klass) ignored++;
+        return;
+      }
+      addImportedTeacher(teachers, teacherSet, teacher);
+      courses.push({teacher, subject, hours, klass});
+    });
+    return {teachers, courses, ignored};
+  }
+
+  function parseLegacyCourseWorkbook(workbook){
+    for(const sheetName of workbook.SheetNames){
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header:1, defval:'', raw:true});
+      const blockStarts = rows.map((row,index) => String(row[0] || '').trim()==='編號' ? index : -1).filter(index => index >= 0);
+      if(!blockStarts.length) continue;
+      const teachers = [];
+      const teacherSet = new Set();
+      const courses = [];
+      let ignored = 0;
+      for(let blockIndex=0; blockIndex<blockStarts.length; blockIndex++){
+        const start = blockStarts[blockIndex];
+        const end = blockStarts[blockIndex + 1] ?? rows.length;
+        const findRow = label => {
+          for(let row=start; row<end; row++) if(String(rows[row]?.[0] || '').trim()===label) return row;
+          return -1;
+        };
+        const titleRow = findRow('職稱');
+        const nameRow = findRow('姓名');
+        const registeredRow = findRow('登記科目');
+        const courseStart = findRow('任教班級');
+        if(courseStart < 0) continue;
+        const metadataRows = [start,titleRow,nameRow,registeredRow].filter(row => row >= 0);
+        const maxColumns = Math.max(...rows.slice(start,end).map(row => row.length));
+        const teacherColumns = [];
+        for(let column=1; column<maxColumns; column++){
+          if(metadataRows.some(row => String(rows[row]?.[column] || '').trim())) teacherColumns.push(column);
+        }
+        teacherColumns.forEach(column => {
+          const teacher = String(rows[nameRow]?.[column] || rows[titleRow]?.[column] || rows[start]?.[column] || '').trim();
+          if(!teacher) return;
+          addImportedTeacher(teachers, teacherSet, teacher);
+          for(let row=courseStart; row<end; row++){
+            const subject = String(rows[row]?.[column] || '').trim();
+            const hours = Number(rows[row]?.[column + 1]);
+            const klass = String(rows[row]?.[column + 2] || '').trim();
+            if(!subject) continue;
+            if(!Number.isFinite(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
+              ignored++;
+              continue;
+            }
+            courses.push({teacher, subject, hours, klass});
+          }
+        });
+      }
+      return {teachers, courses, ignored};
+    }
+    return null;
+  }
+
+  function addImportedTeacher(teachers, teacherSet, name){
+    const teacher = String(name || '').trim();
+    if(teacher && !teacherSet.has(teacher)){
+      teacherSet.add(teacher);
+      teachers.push(teacher);
+    }
+  }
+
+  function applyCourseWorkbookData(data){
+    state.teachers = data.teachers;
+    state.courses = data.courses.filter(course => !getSpecialClasses().includes(course.klass));
+    state.fixed = [];
+    state.specialBindings = [];
+    state.unavailable = [];
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBindingTable();
+    renderBlockTable();
+    resetBindingBuilder();
+    document.getElementById('outputText').value = '';
+  }
+
+  // ---------- 讀取 input.txt ----------
+  function importInputFile(input){
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseInputText(String(reader.result || ''));
+      input.value = '';
+      if(parsed.error){
+        alert(`檔案格式有誤（第 ${parsed.error} 行），未匯入。`);
+        return;
+      }
+      applyImportedData(parsed);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function parseInputText(text){
+    const imported = {
+      schoolName:'', schoolYear:'', semester:'1',
+      courses:[], fixed:[], specialBindings:[], unavailable:[]
+    };
+    const teachers = new Set();
+    const bindingSets = new Map();
+    const bindingTimes = [];
+    const records = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+    for(let index=0; index<records.length; index++){
+      const line = records[index].trim();
+      if(!line) continue;
+      const parts = line.split('|');
+      const tag = parts[0];
+      const invalid = parts.some(part => !part.trim());
+
+      if(tag === 'S' && parts.length === 4 && !invalid && /^\d{2,3}$/.test(parts[2]) && ['1','2'].includes(parts[3])){
+        [, imported.schoolName, imported.schoolYear, imported.semester] = parts;
+      } else if(tag === 'C' && parts.length === 5 && !invalid && /^\d+$/.test(parts[3]) && Number(parts[3]) > 0){
+        const [, teacher, subject, hours, klass] = parts;
+        imported.courses.push({teacher, subject, hours:Number(hours), klass});
+        teachers.add(teacher);
+      } else if(tag === 'F' && parts.length === 6 && !invalid && DAYS.includes(parts[4]) && PERIODS.includes(Number(parts[5]))){
+        const [, teacher, subject, klass, day, period] = parts;
+        imported.fixed.push({teacher, subject, klass, day, period:Number(period)});
+        teachers.add(teacher);
+      } else if(tag === 'BK' && parts.length === 4){
+        const [, bindingSetId, classText, subjectText] = parts;
+        const classes = classText.split(',').map(value => value.trim()).filter(Boolean);
+        const subjects = subjectText.split(',').map(value => {
+          const [subject,hours] = value.split(':');
+          return {subject:subject?.trim(), hours:Number(hours)};
+        });
+        if(!bindingSetId || classes.length < 2 || new Set(classes).size !== classes.length ||
+           subjects.some(item => !item.subject || !Number.isInteger(item.hours) || item.hours <= 0)){
+          return {error:index + 1};
+        }
+        bindingSets.set(bindingSetId, {bindingSetId, classes, subjects, line:index+1});
+      } else if(tag === 'BT' && parts.length === 9){
+        const [, bindingSetId, groupId, mode, day, period, teacher, subject, klass] = parts;
+        const validTime = mode === 'AUTO'
+          ? day === '-' && period === '-'
+          : mode === 'FIXED' && DAYS.includes(day) && PERIODS.includes(Number(period));
+        const noSpecial = teacher === '-' && subject === '-' && klass === '-';
+        const hasSpecial = [teacher,subject,klass].every(value => value && value !== '-');
+        if(!bindingSetId || !groupId || !validTime || (!noSpecial && !hasSpecial)){
+          return {error:index + 1};
+        }
+        bindingTimes.push({
+          bindingSetId, groupId, mode, day,
+          period:mode==='AUTO' ? '-' : Number(period),
+          teacher:noSpecial ? '' : teacher, subject:noSpecial ? '' : subject,
+          klass:noSpecial ? '' : klass, line:index+1
+        });
+        if(hasSpecial) teachers.add(teacher);
+      } else if(tag === 'U' && parts.length === 4 && !invalid && DAYS.includes(parts[2]) && PERIODS.includes(Number(parts[3]))){
+        const [, teacher, day, period] = parts;
+        imported.unavailable.push({teacher, day, period:Number(period)});
+        teachers.add(teacher);
+      } else {
+        return {error:index + 1};
+      }
+    }
+
+    if(new Set(bindingTimes.map(item => item.groupId)).size !== bindingTimes.length){
+      return {error:bindingTimes.find((item,index) => bindingTimes.findIndex(other => other.groupId===item.groupId) !== index).line};
+    }
+    for(const binding of bindingSets.values()){
+      const times = bindingTimes.filter(item => item.bindingSetId === binding.bindingSetId);
+      if(times.length !== binding.subjects.reduce((sum,item) => sum + item.hours, 0)) return {error:binding.line};
+      times.forEach(time => imported.specialBindings.push({
+        ...time,
+        kind:binding.subjects.length === 1 ? 'same' : 'cross',
+        type:time.teacher ? 'special' : 'normal',
+        classes:[...binding.classes], subjects:binding.subjects.map(item => ({...item}))
+      }));
+    }
+    const unknownTime = bindingTimes.find(item => !bindingSets.has(item.bindingSetId));
+    if(unknownTime) return {error:unknownTime.line};
+    imported.teachers = [...teachers];
+    return imported;
+  }
+
+  function applyImportedData(data){
+    const specialClasses = new Set(
+      data.specialBindings.filter(item => item.type==='special').map(item => item.klass)
+    );
+    const regularClasses = [
+      ...data.courses.map(item => item.klass),
+      ...data.fixed.map(item => item.klass).filter(klass => !specialClasses.has(klass)),
+      ...data.specialBindings.flatMap(binding => binding.classes)
+    ];
+    state.grades = {7:0,8:0,9:0};
+    state.specialGrades = {7:false,8:false,9:false};
+    regularClasses.forEach(klass => {
+      const grade = Number(klass[0]);
+      const number = Number(klass.slice(1));
+      if(state.grades[grade] !== undefined && Number.isInteger(number)){
+        state.grades[grade] = Math.max(state.grades[grade], number);
+      }
+    });
+    specialClasses.forEach(klass => {
+      const grade = Number(klass[0]);
+      if(state.specialGrades[grade] !== undefined) state.specialGrades[grade] = true;
+    });
+
+    state.teachers = data.teachers;
+    state.courses = data.courses;
+    state.fixed = data.fixed;
+    state.specialBindings = data.specialBindings;
+    state.unavailable = data.unavailable;
+    document.getElementById('schoolName').value = data.schoolName;
+    document.getElementById('schoolYear').value = data.schoolYear;
+    document.getElementById('semester').value = data.semester;
+
+    initGradeGrid();
+    updateClassPreview();
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBindingTable();
+    renderBlockTable();
+    resetBindingBuilder();
+    document.getElementById('outputText').value = '';
+  }
+
+  // ---------- 步驟7：產生輸出 ----------
+  function generateOutput(){
+    const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolYear = document.getElementById('schoolYear').value.trim();
+    const semester = document.getElementById('semester').value;
+    let lines = [`S|${schoolName}|${schoolYear}|${semester}`];
+    state.courses.filter(c => !getSpecialClasses().includes(c.klass)).forEach(c => {
+      lines.push(`C|${c.teacher}|${c.subject}|${c.hours}|${c.klass}`);
+    });
+    const fixedLines = new Set();
+    state.fixed.forEach(f => {
+      const line = `F|${f.teacher}|${f.subject}|${f.klass}|${f.day}|${f.period}`;
+      if(!fixedLines.has(line)){
+        lines.push(line);
+        fixedLines.add(line);
+      }
+    });
+    let nextGroupNumber = nextBindingGroupNumber();
+    const writtenSets = new Set();
+    state.specialBindings.forEach(binding => {
+      if(!binding.groupId) binding.groupId = formatBindingGroupId(nextGroupNumber++);
+      if(!writtenSets.has(binding.bindingSetId)){
+        lines.push(`BK|${binding.bindingSetId}|${binding.classes.join(',')}|${binding.subjects.map(item => `${item.subject}:${item.hours}`).join(',')}`);
+        writtenSets.add(binding.bindingSetId);
+      }
+      const mode = binding.mode || 'FIXED';
+      const special = binding.type === 'normal' ? ['-','-','-'] : [binding.teacher,binding.subject,binding.klass];
+      lines.push(`BT|${binding.bindingSetId}|${binding.groupId}|${mode}|${binding.day}|${binding.period}|${special.join('|')}`);
+    });
+    state.unavailable.forEach(u => {
+      lines.push(`U|${u.teacher}|${u.day}|${u.period}`);
+    });
+    document.getElementById('outputText').value = lines.join('\n');
+  }
+
+  function validateClassHours(){
+    const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolYear = document.getElementById('schoolYear').value.trim();
+    const invalidMetadata = [schoolName, schoolYear].some(value => value.includes('|') || /[\r\n]/.test(value));
+    const metadataErrors = [];
+    if(!schoolName) metadataErrors.push('請填寫學校名稱');
+    if(!schoolYear) metadataErrors.push('請填寫學年度');
+    else if(!/^\d{2,3}$/.test(schoolYear)) metadataErrors.push('學年度請輸入2至3位數字，例如115');
+    if(invalidMetadata) metadataErrors.push('學校名稱與學年度不可包含 | 或換行');
+
+    const expectedClasses = getAllClasses();
+    if(expectedClasses.length === 0) return [...metadataErrors, '請先在步驟1設定班級數量'];
+    const totals = Object.fromEntries(expectedClasses.map(k => [k, 0]));
+    state.courses.forEach(c => {
+      if(getSpecialClasses().includes(c.klass)) return;
+      totals[c.klass] = (totals[c.klass] || 0) + c.hours;
+    });
+    const errors = [...metadataErrors];
+    Object.entries(totals).sort().forEach(([klass, hours]) => {
+      if(!expectedClasses.includes(klass)) errors.push(`${klass}班不在步驟1設定的班級中`);
+      else if(hours !== 35) errors.push(`${klass}班目前 ${hours} 節，應為 35 節`);
+    });
+    return errors;
+  }
+
+  function generateAndDownload(){
+    const errors = validateClassHours();
+    if(errors.length){
+      alert('資料尚未通過檢查：\n' + errors.join('\n'));
+      return;
+    }
+    generateOutput();
+    downloadOutput();
+  }
+
+  function downloadOutput(){
+    const content = document.getElementById('outputText').value;
+    if(!content){ alert('請先按「產生資料檔」'); return; }
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'input.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function resetAll(){
+    if(!confirm('確定要清空所有已輸入的資料嗎？這個動作無法復原。')) return;
+    state.grades = {7:0,8:0,9:0};
+    state.specialGrades = {7:false,8:false,9:false};
+    state.teachers = [];
+    state.courses = [];
+    state.fixed = [];
+    state.specialBindings = [];
+    state.unavailable = [];
+    document.getElementById('schoolName').value = '';
+    document.getElementById('schoolYear').value = '';
+    document.getElementById('semester').value = '1';
+    document.getElementById('bindingSpecialEnabled').checked = false;
+    bindingSpecialConfigs = [];
+    onBindingSpecialChange();
+    document.querySelector('input[name="bindingKind"][value="same"]').checked = true;
+    onBindingKindChange();
+    initGradeGrid();
+    updateClassPreview();
+    renderTeacherChips();
+    refreshTeacherDependentSelects();
+    renderCourseTable();
+    renderFixedTable();
+    renderBindingTable();
+    renderBlockTable();
+    resetBindingBuilder();
+    document.getElementById('outputText').value = '';
+  }
+
+  // ---------- 初始化 ----------
+  initGradeGrid();
+  updateClassPreview();
+  initPeriodSelectFixed();
+  initPeriodCheckGrid();
+  initDayCheckGrid();
+  refreshTeacherDependentSelects();
+  renderCourseTable();
+  renderFixedTable();
+  renderBindingTable();
+  renderBlockTable();
+  resetBindingBuilder();
+</script>
+</body>
+</html>
