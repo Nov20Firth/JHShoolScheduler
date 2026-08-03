@@ -91,6 +91,19 @@
   .row{ margin-left:44px; margin-bottom:16px; }
   .row-inline{ display:flex; gap:14px; flex-wrap:wrap; margin-left:44px; margin-bottom:16px; }
   .row-inline > div{ flex:1; min-width:140px; }
+  .course-entry-grid{ display:grid; grid-template-columns:minmax(280px,.9fr) minmax(340px,1.1fr); gap:16px; margin:0 0 16px 44px; }
+  .course-entry-card{ border:1px solid var(--line); border-radius:10px; padding:16px; background:#FBFAF6; }
+  .course-entry-card h3{ margin:0 0 14px; font-size:16px; font-weight:600; }
+  .course-form-fields{ display:grid; grid-template-columns:1fr 90px 110px; gap:10px; align-items:end; }
+  .course-entry-card .row{ margin-left:0; }
+  .course-entry-card textarea{ min-height:154px; }
+  .course-entry-action{ margin-top:14px; }
+  .course-custom-subject{ margin-top:10px; }
+  @media (max-width:760px){
+    .course-entry-grid{ grid-template-columns:1fr; }
+    .course-form-fields{ grid-template-columns:1fr 1fr; }
+    .course-form-fields > div:first-child{ grid-column:1 / -1; }
+  }
 
   button{
     font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;
@@ -131,7 +144,6 @@
   .binding-slot{ border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#FBFAF6; }
   .binding-slot-fields{ display:grid; grid-template-columns:minmax(180px,1fr) 130px 110px 100px; gap:10px; align-items:end; }
   .binding-slot-fields.auto{ grid-template-columns:minmax(180px,1fr) 130px; }
-  .binding-auto-summary{ border:1px solid #BFDDD2; border-radius:10px; padding:10px 12px; margin-bottom:10px; background:var(--teal-tint); color:var(--teal-dark); font-size:13.5px; }
   .binding-special-panel{ margin:18px 0 14px 44px; border:2px solid var(--amber-line); border-radius:12px; background:var(--amber-tint); overflow:hidden; }
   .binding-special-toggle{ display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; margin:0; color:var(--amber); font-weight:700; }
   .binding-special-toggle:hover{ background:rgba(255,255,255,.35); }
@@ -269,18 +281,40 @@
       </div>
     </div>
 
-    <div class="row" style="display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
-      <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
-    </div>
+    <div class="course-entry-grid">
+      <div class="course-entry-card">
+        <h3>一般輸入</h3>
+        <div class="course-form-fields">
+          <div>
+            <label for="courseFormSubject">科目</label>
+            <select id="courseFormSubject" onchange="onCourseFormSubjectChange()"></select>
+          </div>
+          <div>
+            <label for="courseFormHours">堂數</label>
+            <select id="courseFormHours"></select>
+          </div>
+          <div>
+            <label for="courseFormClass">班級</label>
+            <select id="courseFormClass"></select>
+          </div>
+        </div>
+        <div class="course-custom-subject" id="courseCustomSubjectWrap" style="display:none;">
+          <label for="courseCustomSubject">自訂校定課程名稱</label>
+          <input type="text" id="courseCustomSubject" placeholder="例如：國際視野、食農教育">
+        </div>
+        <div class="course-entry-action"><button type="button" onclick="addCourseFromForm()">加入課程</button></div>
+      </div>
 
-    <div class="row">
-      <label for="courseBulk">課程資料（科目、堂數、班級）</label>
-      <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
-    </div>
-
-    <div class="row">
-      <button onclick="addCoursesFromBulk()">加入這些課程</button>
+      <div class="course-entry-card">
+        <h3>快速貼上</h3>
+        <label for="courseBulk">課程資料（科目、堂數、班級）</label>
+        <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+          <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
+          <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
+        </div>
+        <div class="course-entry-action"><button type="button" onclick="addCoursesFromBulk()">快速加入</button></div>
+      </div>
     </div>
 
     <table class="data-tbl" id="courseTable" style="display:none;">
@@ -480,6 +514,14 @@
 <script>
   const DAYS = ["一","二","三","四","五"];
   const PERIODS = [1,2,3,4,5,6,7];
+  const CUSTOM_SUBJECT = "__custom__";
+  const COURSE_DEFAULT_HOURS = {
+    "國語文":5, "數學":4, "英語文":3, "自然":3,
+    "地理":1, "歷史":1, "公民":1, "本土語":1,
+    "健康教育":1, "體育":1, "生活科技":1, "資訊科技":1,
+    "音樂":1, "視覺藝術":1, "表演藝術":1, "童軍":1,
+    "家政":1, "輔導":1, "班級自治":1, "社團":1
+  };
 
   const state = {
     grades: {7:0,8:0,9:0},
@@ -522,6 +564,7 @@
         if(next === 0) state.specialGrades[g] = false;
         initGradeGrid();
         updateClassPreview();
+        refreshCourseFormControls();
         resetBindingBuilder();
       };
       const specialLabel = document.createElement('label');
@@ -727,6 +770,78 @@
   }
 
   // ---------- 步驟3：課程 ----------
+  function refreshCourseFormControls(){
+    const subjectSelect = document.getElementById('courseFormSubject');
+    const hoursSelect = document.getElementById('courseFormHours');
+    const classSelect = document.getElementById('courseFormClass');
+    if(!subjectSelect || !hoursSelect || !classSelect) return;
+
+    const currentSubject = subjectSelect.value;
+    const subjects = [...new Set([...Object.keys(COURSE_DEFAULT_HOURS), ...state.courses.map(course => course.subject)])];
+    subjectSelect.innerHTML = '';
+    subjects.forEach(subject => {
+      const option = document.createElement('option');
+      option.value = subject; option.textContent = subject;
+      subjectSelect.appendChild(option);
+    });
+    const customOption = document.createElement('option');
+    customOption.value = CUSTOM_SUBJECT; customOption.textContent = '其他科目（自行輸入）';
+    subjectSelect.appendChild(customOption);
+    if(subjects.includes(currentSubject) || currentSubject === CUSTOM_SUBJECT) subjectSelect.value = currentSubject;
+
+    const currentHours = Number(hoursSelect.value) || COURSE_DEFAULT_HOURS[subjectSelect.value] || 1;
+    hoursSelect.innerHTML = [1,2,3,4,5].map(hours => `<option value="${hours}">${hours}</option>`).join('');
+    hoursSelect.value = currentHours;
+
+    const currentClass = classSelect.value;
+    const classes = getAllClasses();
+    classSelect.innerHTML = '';
+    if(classes.length){
+      classes.forEach(klass => {
+        const option = document.createElement('option');
+        option.value = klass; option.textContent = `${klass}班`;
+        classSelect.appendChild(option);
+      });
+    } else {
+      const option = document.createElement('option');
+      option.value = ''; option.textContent = '請先完成步驟1';
+      classSelect.appendChild(option);
+    }
+    if(classes.includes(currentClass)) classSelect.value = currentClass;
+    onCourseFormSubjectChange(false);
+  }
+
+  function onCourseFormSubjectChange(applyDefault = true){
+    const subject = document.getElementById('courseFormSubject').value;
+    document.getElementById('courseCustomSubjectWrap').style.display = subject === CUSTOM_SUBJECT ? 'block' : 'none';
+    if(applyDefault) document.getElementById('courseFormHours').value = COURSE_DEFAULT_HOURS[subject] || 1;
+  }
+
+  function addCourseFromForm(){
+    const teacher = document.getElementById('courseTeacherSelect').value;
+    const selectedSubject = document.getElementById('courseFormSubject').value;
+    const customInput = document.getElementById('courseCustomSubject');
+    const subject = selectedSubject === CUSTOM_SUBJECT ? customInput.value.trim() : selectedSubject;
+    const hours = Number(document.getElementById('courseFormHours').value);
+    const klass = document.getElementById('courseFormClass').value;
+    if(!teacher || !subject || !klass){ alert('請完整選擇老師、科目與班級'); return; }
+    const existing = state.courses.find(course => course.klass === klass && course.subject === subject);
+    if(existing){ alert(`${klass}班的${subject}已由「${existing.teacher}」設定，不能重複加入`); return; }
+
+    const classes = getAllClasses();
+    const nextClass = classes[classes.indexOf(klass) + 1] || klass;
+    state.courses.push({teacher, subject, hours, klass});
+    if(selectedSubject === CUSTOM_SUBJECT) customInput.value = '';
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+    resetBindingBuilder();
+    document.getElementById('courseFormSubject').value = subject;
+    document.getElementById('courseFormHours').value = hours;
+    document.getElementById('courseFormClass').value = nextClass;
+    onCourseFormSubjectChange(false);
+  }
+
   function addCoursesFromBulk(){
     const teacher = document.getElementById('courseTeacherSelect').value;
     if(!teacher){ alert('請先選擇老師'); return; }
@@ -800,6 +915,7 @@
       tbody.appendChild(tr);
     });
     updateClassHoursSummary();
+    refreshCourseFormControls();
   }
 
   function updateClassHoursSummary(){
@@ -1217,12 +1333,6 @@
     wrap.innerHTML = '';
     document.getElementById('addBindingDraftRow').style.display = bindingDraft.length ? 'block' : 'none';
     const bindingKind = document.querySelector('input[name="bindingKind"]:checked').value;
-    if(bindingDraft.length && bindingKind === 'cross'){
-      const summary = document.createElement('div');
-      summary.className = 'binding-auto-summary';
-      summary.textContent = `普通班科目交錯交由排課程式決定：${bindingDraftMeta.classes.join('、')}；${bindingDraftMeta.subjects.map(item => `${item.subject} ${item.hours}堂`).join('、')}`;
-      wrap.appendChild(summary);
-    }
     bindingDraft.forEach((slot,index) => {
       const row = document.createElement('div');
       row.className = 'binding-slot';
@@ -1231,11 +1341,7 @@
 
       const description = document.createElement('div');
       const descriptionLabel = document.createElement('label'); descriptionLabel.textContent = `第${index+1}堂`;
-      const descriptionText = document.createElement('div');
-      descriptionText.textContent = bindingKind === 'same'
-        ? `${bindingDraftMeta.classes.join('、')}：${bindingDraftMeta.subjects[0]?.subject || ''}`
-        : '各班科目由排課程式自動交錯';
-      description.append(descriptionLabel,descriptionText);
+      description.append(descriptionLabel);
 
       const modeBox = document.createElement('div');
       const modeLabel = document.createElement('label'); modeLabel.textContent = '時段';
