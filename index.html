@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>排課資料整理小幫手</title>
+<title>完全中學排課資料整理小幫手 v1.0.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -91,6 +91,19 @@
   .row{ margin-left:44px; margin-bottom:16px; }
   .row-inline{ display:flex; gap:14px; flex-wrap:wrap; margin-left:44px; margin-bottom:16px; }
   .row-inline > div{ flex:1; min-width:140px; }
+  .course-entry-grid{ display:grid; grid-template-columns:minmax(280px,.9fr) minmax(340px,1.1fr); gap:16px; margin:0 0 16px 44px; }
+  .course-entry-card{ border:1px solid var(--line); border-radius:10px; padding:16px; background:#FBFAF6; }
+  .course-entry-card h3{ margin:0 0 14px; font-size:16px; font-weight:600; }
+  .course-form-fields{ display:grid; grid-template-columns:1fr 90px 110px; gap:10px; align-items:end; }
+  .course-entry-card .row{ margin-left:0; }
+  .course-entry-card textarea{ min-height:154px; }
+  .course-entry-action{ margin-top:14px; }
+  .course-custom-subject{ margin-top:10px; }
+  @media (max-width:760px){
+    .course-entry-grid{ grid-template-columns:1fr; }
+    .course-form-fields{ grid-template-columns:1fr 1fr; }
+    .course-form-fields > div:first-child{ grid-column:1 / -1; }
+  }
 
   button{
     font-family:inherit; font-size:14px; font-weight:500; cursor:pointer;
@@ -160,8 +173,8 @@
 
 <header class="top">
   <div class="wrap">
-    <h1>排課資料整理小幫手</h1>
-    <p>用下拉選單整理課程資料，產生一份 input.txt，跟排課程式一起丟給 Claude 即可排出課表。</p>
+    <h1>完全中學排課資料整理小幫手 v1.0.0</h1>
+    <p>用表單整理國中與高中課程及排課條件，產生 input.txt，再由完全中學排課程式建立可拖曳微調的暫定課表。</p>
   </div>
 </header>
 
@@ -169,9 +182,10 @@
   <div class="intro-card">
     <h2>使用方式</h2>
     <ol>
-      <li>照步驟 1~6 輸入班級、老師、課程與排課條件。</li>
+      <li>照步驟 1～7 輸入班級、老師、課程與排課條件。</li>
       <li>按「檢查並下載 input.txt」，系統會先確認每班都是 35 節。</li>
-      <li>在同一個資料夾執行 step2scheduler.py，即可產生 Excel 課表。</li>
+      <li>把下載的 input.txt 放進程式資料夾，雙擊「完全中學排課.bat」。</li>
+      <li>在暫定課表中拖曳微調；完成後儲存微調資料，再雙擊「完全中學微調.bat」輸出 Excel。</li>
     </ol>
 
     <div class="warn">
@@ -190,13 +204,13 @@
 
   <!-- STEP 1 -->
   <section class="step">
-    <div class="step-head"><div class="step-num">1</div><h2>學校資料與班級數量</h2></div>
-    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再選擇七、八、九年級各有幾個班。學校名稱請勿輸入「|」。</div>
+    <div class="step-head"><div class="step-num">1</div><h2>學校資料、班級與專科教室</h2></div>
+    <div class="step-desc">學校資料會顯示在 Excel 課表標題，再設定高中一至三年級、國中七至九年級的班級數及專科場地數量。所有班級仍為每週 35 節，不排第 8 節。</div>
 
     <div class="row-inline">
       <div>
         <label for="schoolName">學校名稱</label>
-        <input type="text" id="schoolName" placeholder="例如：○○國民中學">
+        <input type="text" id="schoolName" placeholder="例如：○○完全中學">
       </div>
       <div>
         <label for="schoolYear">學年度</label>
@@ -215,13 +229,19 @@
 
     <div class="preview-box" style="margin-top:16px;">
       目前產生的班級：<span id="classPreview">（尚未設定）</span>
-      <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">班級代碼使用十進位：七年級第 9、10、16 班依序為 709、710、716，不使用十六進位。</div>
+      <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">班級代碼：高中一至三年級使用 101、201、301 起；國中使用 701、801、901 起。</div>
+    </div>
+
+    <div class="row" style="margin-top:20px;">
+      <label>專科教室數量</label>
+      <div class="grid-grades" id="roomGrid"></div>
+      <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">同一節使用同一場地的班級數不可超過設定值；體育場地預設 2，其他專科教室預設 1。</div>
     </div>
 
     <div class="row" style="margin-top:16px;">
       <button type="button" class="secondary" onclick="document.getElementById('courseWorkbookFile').click()">匯入配課 Excel</button>
       <input type="file" id="courseWorkbookFile" accept=".xlsx,.xls" onchange="importCourseWorkbook(this)" style="display:none;">
-      <button type="button" class="secondary" onclick="document.getElementById('inputFile').click()">讀取舊 input.txt</button>
+      <button type="button" class="secondary" onclick="document.getElementById('inputFile').click()">讀取 input.txt</button>
       <input type="file" id="inputFile" accept=".txt,text/plain" onchange="importInputFile(this)" style="display:none;">
       <div style="margin-top:6px; color:var(--ink-soft); font-size:13px;">匯入 Excel 會取代目前的教師名單、課程需求與相關排課條件。</div>
     </div>
@@ -232,7 +252,7 @@
     <div class="step-head"><div class="step-num">2</div><h2>教師名單</h2></div>
     <div class="step-desc">
       把所有老師的名稱（建議用職稱或編號）貼在下面，可以用換行、空白或逗號分開，一次貼多筆也沒問題。<br>
-      每位教師代號不可重複。<br>
+      每位教師代號不可重複，教師代號與科目名稱請避免使用「|」符號。<br>
       系統會嘗試抓取關鍵字「導師」及「主任」來增加填寫方便。
     </div>
 
@@ -259,7 +279,7 @@
   <!-- STEP 3 -->
   <section class="step">
     <div class="step-head"><div class="step-num">3</div><h2>任教班級（課程需求）</h2></div>
-    <div class="step-desc">先選一位老師，再貼上這位老師教的課程，格式是「科目、堂數、班級」，班級請填純數字（例如 701）。每行一筆，欄位之間可以用空白、Tab 或逗號分開。</div>
+    <div class="step-desc">先選一位老師，再貼上這位老師教的課程，格式是「科目、堂數、班級」，堂數須為正整數，班級請填純數字（例如 701）。每個「班級＋科目」只能有一筆課程；若需拆分，請改用國文A、國文B等不同科目名稱，完成排課後再到 Excel 修改。每行一筆，欄位之間可以用空白、Tab 或逗號分開。</div>
 
     <div class="row-inline">
       <div>
@@ -268,18 +288,40 @@
       </div>
     </div>
 
-    <div class="row" style="display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
-      <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
-    </div>
+    <div class="course-entry-grid">
+      <div class="course-entry-card">
+        <h3>一般輸入</h3>
+        <div class="course-form-fields">
+          <div>
+            <label for="courseFormSubject">科目</label>
+            <select id="courseFormSubject" onchange="onCourseFormSubjectChange()"></select>
+          </div>
+          <div>
+            <label for="courseFormHours">堂數</label>
+            <select id="courseFormHours"></select>
+          </div>
+          <div>
+            <label for="courseFormClass">班級</label>
+            <select id="courseFormClass"></select>
+          </div>
+        </div>
+        <div class="course-custom-subject" id="courseCustomSubjectWrap" style="display:none;">
+          <label for="courseCustomSubject">自訂校定課程名稱</label>
+          <input type="text" id="courseCustomSubject" placeholder="例如：國際視野、食農教育">
+        </div>
+        <div class="course-entry-action"><button type="button" onclick="addCourseFromForm()">加入課程</button></div>
+      </div>
 
-    <div class="row">
-      <label for="courseBulk">課程資料（科目、堂數、班級）</label>
-      <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
-    </div>
-
-    <div class="row">
-      <button onclick="addCoursesFromBulk()">加入這些課程</button>
+      <div class="course-entry-card">
+        <h3>快速貼上</h3>
+        <label for="courseBulk">課程資料（科目、堂數、班級）</label>
+        <textarea id="courseBulk" placeholder="例如：&#10;體育 2 801&#10;健康教育 1 801&#10;健康教育 1 802"></textarea>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+          <input type="checkbox" id="autoNextTeacher" checked style="width:18px;height:18px;">
+          <label for="autoNextTeacher" style="margin:0;">加入後自動切換到下一位老師</label>
+        </div>
+        <div class="course-entry-action"><button type="button" onclick="addCoursesFromBulk()">快速加入</button></div>
+      </div>
     </div>
 
     <table class="data-tbl" id="courseTable" style="display:none;">
@@ -336,7 +378,7 @@
   <!-- STEP 5 -->
   <section class="step">
     <div class="step-head"><div class="step-num">5</div><h2>綁課</h2></div>
-    <div class="step-desc">同科綁課可選兩個以上班級；不同科綁課可同時選擇多個班級與多個科目，並將所選科目的全部堂數綁在一起。</div>
+    <div class="step-desc">同科綁課可選兩個以上班級；不同科只要選擇綁定班級與科目，系統就會依各科堂數自動產生交錯組合，每堂只需決定時段與特教授課內容。</div>
 
     <div class="row">
       <label>綁課類型</label>
@@ -362,14 +404,14 @@
 
     <div id="crossBindingForm" style="display:none;">
       <div class="row">
-        <label>班級（可複選，至少兩班）</label>
+        <label>綁定班級（可複選，至少兩班）</label>
         <div class="choice-grid" id="crossBindingClasses"></div>
       </div>
       <div class="row">
-        <label>科目（可複選，至少兩科）</label>
+        <label>綁定科目（可複選，至少兩科）</label>
         <div class="choice-grid" id="crossBindingSubjects"></div>
       </div>
-      <div class="row"><button type="button" onclick="prepareCrossSubjectBinding()">產生不同科綁課內容</button></div>
+      <div class="row"><button type="button" onclick="prepareCrossSubjectBinding()">自動產生交錯綁課</button></div>
     </div>
 
     <div class="binding-special-panel">
@@ -452,9 +494,23 @@
     <div class="empty-hint" id="blockEmptyHint">目前還沒有設定任何不可排課時段。</div>
   </section>
 
-  <!-- STEP 7 -->
   <section class="step">
-    <div class="step-head"><div class="step-num">7</div><h2>產生資料檔</h2></div>
+    <div class="step-head"><div class="step-num">7</div><h2>班級課程不可排時段</h2></div>
+    <div class="step-desc">用於技藝課等共同時段：被選班級在該時段不能排指定科目，但仍可排其他課。每行格式為「班級｜科目｜星期｜節次」。多個班級、科目或節次用逗號分隔。</div>
+    <div class="row">
+      <label for="courseUnavailableBulk">課程禁排資料</label>
+      <textarea id="courseUnavailableBulk" placeholder="例如：&#10;901,902｜國語文,英語文,數學｜二｜5,6,7"></textarea>
+    </div>
+    <div class="row"><button type="button" onclick="addCourseUnavailable()">加入課程禁排</button></div>
+    <table class="data-tbl" id="courseUnavailableTable" style="display:none;">
+      <thead><tr><th>班級</th><th>科目</th><th>星期</th><th>節次</th><th></th></tr></thead><tbody></tbody>
+    </table>
+    <div class="empty-hint" id="courseUnavailableEmptyHint">目前沒有設定班級課程禁排時段。</div>
+  </section>
+
+  <!-- STEP 8 -->
+  <section class="step">
+    <div class="step-head"><div class="step-num">8</div><h2>產生資料檔</h2></div>
     <div class="step-desc">系統會先確認步驟1設定的普通班都正好 35 節；特生課表只記錄特教綁課，不需要填滿35節。</div>
 
     <div class="row">
@@ -467,7 +523,7 @@
 
     <div class="final-steps">
       <b>下一步</b>
-      把 input.txt 放在 scheduler.py 的同一個資料夾，再執行 Python 程式。
+      把 input.txt 放進程式資料夾，雙擊「完全中學排課.bat」。排課完成後會產生可拖曳調整的暫定課表。
     </div>
   </section>
 
@@ -479,23 +535,76 @@
 <script>
   const DAYS = ["一","二","三","四","五"];
   const PERIODS = [1,2,3,4,5,6,7];
+  const GRADE_CODES = [1,2,3,7,8,9];
+  const CUSTOM_SUBJECT = "__custom__";
+  const COURSE_DEFAULT_HOURS = {
+    "國語文":5, "國文":5, "國學常識":1, "數學":4, "英語文":3, "英文":4, "自然":3,
+    "物理":2, "化學":2, "生物":2, "地球科學":1,
+    "地理":1, "歷史":1, "公民":1, "本土語":1,
+    "健康教育":1, "體育":1, "生活科技":1, "資訊科技":1,
+    "音樂":1, "視覺藝術":1, "表演藝術":1, "童軍":1,
+    "家政":1, "輔導":1, "班級自治":1, "社團":1
+  };
+  const DEFAULT_ROOM_SETTINGS = [
+    {subject:"生活科技", room:"生活科技教室", capacity:1},
+    {subject:"資訊科技", room:"資訊教室", capacity:1},
+    {subject:"音樂", room:"音樂教室", capacity:1},
+    {subject:"視覺藝術", room:"美術教室", capacity:1},
+    {subject:"表演藝術", room:"表藝教室", capacity:1},
+    {subject:"體育", room:"體育場地", capacity:2}
+  ];
+
+  function defaultRoomSettings(){
+    return DEFAULT_ROOM_SETTINGS.map(item => ({...item}));
+  }
 
   const state = {
-    grades: {7:0,8:0,9:0},
-    specialGrades: {7:false,8:false,9:false},
+    grades: {1:0,2:0,3:0,7:0,8:0,9:0},
+    specialGrades: {1:false,2:false,3:false,7:false,8:false,9:false},
     teachers: [],
     courses: [],       // {teacher, subject, hours, klass}
     fixed: [],         // {teacher, subject, klass, day, period}
-    specialBindings: [], // B 群組：指定時段同步綁課（type: normal 或 special）
-    unavailable: []    // {teacher, day, period}
+    specialBindings: [], // BK/BT 綁課需求（type: normal 或 special）
+    unavailable: [],   // {teacher, day, period}
+    courseUnavailable: [], // {classes, subjects, day, periods}
+    roomSettings: defaultRoomSettings() // {subject, room, capacity}
   };
 
-  const GRADE_LABEL = {7:"七年級",8:"八年級",9:"九年級"};
+  const GRADE_LABEL = {1:"高中一年級",2:"高中二年級",3:"高中三年級",7:"國中七年級",8:"國中八年級",9:"國中九年級"};
+
+  function renderRoomSettings(){
+    const grid = document.getElementById('roomGrid');
+    grid.innerHTML = '';
+    state.roomSettings.forEach(item => {
+      const wrap = document.createElement('div');
+      wrap.className = 'grade-item';
+      const label = document.createElement('label');
+      label.textContent = item.room;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '1';
+      input.step = '1';
+      input.value = item.capacity;
+      input.setAttribute('aria-label', `${item.room}數量`);
+      input.onchange = () => {
+        const capacity = Number(input.value);
+        if(!Number.isInteger(capacity) || capacity <= 0){
+          alert('教室數量必須是正整數。');
+          input.value = item.capacity;
+          return;
+        }
+        item.capacity = capacity;
+        document.getElementById('outputText').value = '';
+      };
+      wrap.append(label, input);
+      grid.appendChild(wrap);
+    });
+  }
 
   function initGradeGrid(){
     const grid = document.getElementById('gradeGrid');
     grid.innerHTML = '';
-    for(let g=7; g<=9; g++){
+    for(const g of GRADE_CODES){
       const div = document.createElement('div');
       div.className = 'grade-item';
       const label = document.createElement('label');
@@ -521,6 +630,7 @@
         if(next === 0) state.specialGrades[g] = false;
         initGradeGrid();
         updateClassPreview();
+        refreshCourseFormControls();
         resetBindingBuilder();
       };
       const specialLabel = document.createElement('label');
@@ -554,14 +664,14 @@
   }
 
   function hasClassDependentData(){
-    return state.courses.length > 0 || state.fixed.length > 0 || state.specialBindings.length > 0;
+    return state.courses.length > 0 || state.fixed.length > 0 || state.specialBindings.length > 0 || state.courseUnavailable.length > 0;
   }
 
   function pad2(n){ return n.toString().padStart(2,'0'); }
 
   function getAllClasses(){
     const list = [];
-    for(let g=7; g<=9; g++){
+    for(const g of GRADE_CODES){
       const count = state.grades[g] || 0;
       for(let i=1; i<=count; i++){
         list.push(`${g}${pad2(i)}`);
@@ -576,12 +686,12 @@
   }
 
   function getSpecialClasses(){
-    return [7,8,9].map(getSpecialClass).filter(Boolean);
+    return GRADE_CODES.map(getSpecialClass).filter(Boolean);
   }
 
   function updateClassPreview(){
     const items = [];
-    for(let g=7; g<=9; g++){
+    for(const g of GRADE_CODES){
       const count = state.grades[g] || 0;
       for(let i=1; i<=count; i++) items.push(`${g}${pad2(i)}`);
       const specialClass = getSpecialClass(g);
@@ -605,20 +715,24 @@
 
   function removeTeacher(name){
     if(!confirm(`確定要移除「${name}」嗎？相關課程設定也會一起刪除；若資料填錯，建議使用頁面最下方的「全部重新開始」重填。`)) return;
+    const removedCourses = state.courses.filter(course => course.teacher === name);
+    const removedBindingSets = bindingSetIdsForCourses(removedCourses);
+    state.specialBindings.filter(binding => binding.teacher === name)
+      .forEach(binding => removedBindingSets.add(bindingSetKey(binding)));
     state.teachers = state.teachers.filter(t => t !== name);
     // 同步移除相關資料
     state.courses = state.courses.filter(c => c.teacher !== name);
     state.fixed = state.fixed.filter(f => f.teacher !== name);
-    state.specialBindings = state.specialBindings.filter(b =>
-      b.teacher !== name && b.courses.every(c => c.teacher !== name)
-    );
+    state.specialBindings = state.specialBindings.filter(binding => !removedBindingSets.has(bindingSetKey(binding)));
     state.unavailable = state.unavailable.filter(u => u.teacher !== name);
+    removeCourseUnavailableFor(removedCourses);
     renderTeacherChips();
     refreshTeacherDependentSelects();
     renderCourseTable();
     renderFixedTable();
     renderBindingTable();
     renderBlockTable();
+    renderCourseUnavailableTable();
   }
 
   function renderTeacherChips(){
@@ -724,6 +838,78 @@
   }
 
   // ---------- 步驟3：課程 ----------
+  function refreshCourseFormControls(){
+    const subjectSelect = document.getElementById('courseFormSubject');
+    const hoursSelect = document.getElementById('courseFormHours');
+    const classSelect = document.getElementById('courseFormClass');
+    if(!subjectSelect || !hoursSelect || !classSelect) return;
+
+    const currentSubject = subjectSelect.value;
+    const subjects = [...new Set([...Object.keys(COURSE_DEFAULT_HOURS), ...state.courses.map(course => course.subject)])];
+    subjectSelect.innerHTML = '';
+    subjects.forEach(subject => {
+      const option = document.createElement('option');
+      option.value = subject; option.textContent = subject;
+      subjectSelect.appendChild(option);
+    });
+    const customOption = document.createElement('option');
+    customOption.value = CUSTOM_SUBJECT; customOption.textContent = '其他科目（自行輸入）';
+    subjectSelect.appendChild(customOption);
+    if(subjects.includes(currentSubject) || currentSubject === CUSTOM_SUBJECT) subjectSelect.value = currentSubject;
+
+    const currentHours = Number(hoursSelect.value) || COURSE_DEFAULT_HOURS[subjectSelect.value] || 1;
+    hoursSelect.innerHTML = [1,2,3,4,5].map(hours => `<option value="${hours}">${hours}</option>`).join('');
+    hoursSelect.value = currentHours;
+
+    const currentClass = classSelect.value;
+    const classes = getAllClasses();
+    classSelect.innerHTML = '';
+    if(classes.length){
+      classes.forEach(klass => {
+        const option = document.createElement('option');
+        option.value = klass; option.textContent = `${klass}班`;
+        classSelect.appendChild(option);
+      });
+    } else {
+      const option = document.createElement('option');
+      option.value = ''; option.textContent = '請先完成步驟1';
+      classSelect.appendChild(option);
+    }
+    if(classes.includes(currentClass)) classSelect.value = currentClass;
+    onCourseFormSubjectChange(false);
+  }
+
+  function onCourseFormSubjectChange(applyDefault = true){
+    const subject = document.getElementById('courseFormSubject').value;
+    document.getElementById('courseCustomSubjectWrap').style.display = subject === CUSTOM_SUBJECT ? 'block' : 'none';
+    if(applyDefault) document.getElementById('courseFormHours').value = COURSE_DEFAULT_HOURS[subject] || 1;
+  }
+
+  function addCourseFromForm(){
+    const teacher = document.getElementById('courseTeacherSelect').value;
+    const selectedSubject = document.getElementById('courseFormSubject').value;
+    const customInput = document.getElementById('courseCustomSubject');
+    const subject = selectedSubject === CUSTOM_SUBJECT ? customInput.value.trim() : selectedSubject;
+    const hours = Number(document.getElementById('courseFormHours').value);
+    const klass = document.getElementById('courseFormClass').value;
+    if(!teacher || !subject || !klass){ alert('請完整選擇老師、科目與班級'); return; }
+    const existing = state.courses.find(course => course.klass === klass && course.subject === subject);
+    if(existing){ alert(`${klass}班的${subject}已由「${existing.teacher}」設定，不能重複加入`); return; }
+
+    const classes = getAllClasses();
+    const nextClass = classes[classes.indexOf(klass) + 1] || klass;
+    state.courses.push({teacher, subject, hours, klass});
+    if(selectedSubject === CUSTOM_SUBJECT) customInput.value = '';
+    renderCourseTable();
+    refreshFixedSubjectSelect();
+    refreshBlockSubjectSelect();
+    resetBindingBuilder();
+    document.getElementById('courseFormSubject').value = subject;
+    document.getElementById('courseFormHours').value = hours;
+    document.getElementById('courseFormClass').value = nextClass;
+    onCourseFormSubjectChange(false);
+  }
+
   function addCoursesFromBulk(){
     const teacher = document.getElementById('courseTeacherSelect').value;
     if(!teacher){ alert('請先選擇老師'); return; }
@@ -735,9 +921,12 @@
       const parts = line.replace(/[,，\t]+/g,' ').trim().split(/\s+/);
       if(parts.length !== 3){ errorLines.push(line); return; }
       const [subject, hoursStr, klass] = parts;
-      const hours = parseInt(hoursStr);
-      if(isNaN(hours) || hours <= 0){ errorLines.push(line); return; }
-      if(getSpecialClasses().includes(klass)) return; // 特生班課表只由 SP 產生，忽略誤填的 C
+      const hours = Number(hoursStr);
+      if(!Number.isInteger(hours) || hours <= 0){ errorLines.push(`${line}（堂數須為正整數）`); return; }
+      if(getSpecialClasses().includes(klass)) return; // 特生班課表只由 BK/BT 綁課產生，忽略誤填的 C
+      if(state.courses.some(course => course.klass === klass && course.subject === subject)){
+        errorLines.push(`${line}（${klass}班的${subject}已經有一筆課程）`); return;
+      }
       state.courses.push({teacher, subject, hours, klass});
     });
     document.getElementById('courseBulk').value = '';
@@ -762,11 +951,28 @@
   }
 
   function removeCourse(idx){
+    const course = state.courses[idx];
+    const removedBindingSets = bindingSetIdsForCourses([course]);
     state.courses.splice(idx,1);
+    state.fixed = state.fixed.filter(f =>
+      !(f.teacher === course.teacher && f.subject === course.subject && f.klass === course.klass)
+    );
+    state.specialBindings = state.specialBindings.filter(binding => !removedBindingSets.has(bindingSetKey(binding)));
+    removeCourseUnavailableFor([course]);
     renderCourseTable();
+    renderFixedTable();
+    renderBindingTable();
+    renderCourseUnavailableTable();
     refreshFixedSubjectSelect();
     refreshBlockSubjectSelect();
     resetBindingBuilder();
+  }
+
+  function removeCourseUnavailableFor(courses){
+    const removed = new Set(courses.map(course => `${course.klass}\u0000${course.subject}`));
+    state.courseUnavailable = state.courseUnavailable.filter(item =>
+      !item.classes.some(klass => item.subjects.some(subject => removed.has(`${klass}\u0000${subject}`)))
+    );
   }
 
   function renderCourseTable(){
@@ -786,6 +992,7 @@
       tbody.appendChild(tr);
     });
     updateClassHoursSummary();
+    refreshCourseFormControls();
   }
 
   function updateClassHoursSummary(){
@@ -927,6 +1134,22 @@
     return course ? course.teacher : '';
   }
 
+  function bindingSetKey(binding){
+    return binding.bindingSetId || binding.groupId;
+  }
+
+  function bindingSetIdsForCourses(courses){
+    const ids = new Set();
+    state.specialBindings.forEach(binding => {
+      const dependsOnCourse = courses.some(course =>
+        binding.classes.includes(course.klass) &&
+        binding.subjects.some(item => item.subject === course.subject)
+      );
+      if(dependsOnCourse) ids.add(bindingSetKey(binding));
+    });
+    return ids;
+  }
+
   function nextBindingGroupNumber(){
     return state.specialBindings.reduce((maxNumber, binding) => {
       const match = String(binding.groupId || '').match(/^G(\d+)$/);
@@ -939,6 +1162,7 @@
   }
 
   let bindingDraft = [];
+  let bindingDraftMeta = {classes:[], subjects:[]};
   let bindingSpecialConfigs = [];
 
   function onBindingKindChange(){
@@ -1103,10 +1327,6 @@
     updateBindingSpecialClass();
   }
 
-  function bindingCourse(klass, subject){
-    return {klass, subject, teacher:courseTeacher(klass, subject)};
-  }
-
   function selectedBindingClasses(){
     const kind = document.querySelector('input[name="bindingKind"]:checked').value;
     return kind === 'same'
@@ -1116,7 +1336,7 @@
 
   function bindingClassesForSpecial(){
     return bindingDraft.length
-      ? [...new Set(bindingDraft.flatMap(slot => slot.courses.map(course => course.klass)))]
+      ? bindingDraftMeta.classes
       : selectedBindingClasses();
   }
 
@@ -1128,9 +1348,10 @@
     box.textContent = klass ? `${klass}（特）` : '請在步驟1設定對應年級的特生班';
   }
 
-  function prepareBindingDraft(coursePairs, specialOptions = []){
-    bindingDraft = coursePairs.map((courses,index) => ({
-      courses, mode:'AUTO', day:DAYS[index % DAYS.length], period:Math.floor(index / DAYS.length) + 1,
+  function prepareBindingDraft(slotCount, classes, subjects, specialOptions = []){
+    bindingDraftMeta = {classes:[...classes], subjects:subjects.map(item => ({...item}))};
+    bindingDraft = Array.from({length:slotCount}, (_,index) => ({
+      mode:'AUTO', day:DAYS[index % DAYS.length], period:Math.floor(index / DAYS.length) + 1,
       specialOption:specialOptions[index] ?? null
     }));
     renderBindingDraft();
@@ -1145,8 +1366,25 @@
     const hours = classes.map(klass => courseHours(klass, subject));
     if(hours.some(value => !value)){ alert('找不到課程'); return; }
     if(new Set(hours).size > 1){ alert('各班同科堂數不一致'); return; }
-    const courses = classes.map(klass => bindingCourse(klass, subject));
-    prepareBindingDraft(Array.from({length:hours[0]}, () => courses));
+    prepareBindingDraft(hours[0], classes, [{subject, hours:hours[0]}]);
+  }
+
+  function makeInterleavedSubjectSequence(subjects, hours){
+    const total = hours.reduce((sum,value) => sum + value, 0);
+    const remaining = [...hours];
+    const scores = Array(subjects.length).fill(0);
+    const sequence = [];
+    while(sequence.length < total){
+      scores.forEach((_,index) => { scores[index] += hours[index]; });
+      let selected = -1;
+      for(let index=0; index<subjects.length; index++){
+        if(remaining[index] > 0 && (selected < 0 || scores[index] > scores[selected])) selected = index;
+      }
+      sequence.push(subjects[selected]);
+      remaining[selected]--;
+      scores[selected] -= total;
+    }
+    return sequence;
   }
 
   function prepareCrossSubjectBinding(){
@@ -1161,24 +1399,9 @@
       alert('各班同科堂數必須一致'); return;
     }
 
-    const base = subjects.flatMap((subject,index) => Array(hours[index]).fill(subject));
-    const sequences = [];
-    classes.forEach((klass,classIndex) => {
-      let best = null;
-      for(let offset=0; offset<base.length; offset++){
-        const sequence = base.map((_,index) => base[(index + offset) % base.length]);
-        const score = sequences.reduce((total,previous) => total + sequence.reduce((value,subject,index) => {
-          const sameSubject = subject === previous.subjects[index] ? 1 : 0;
-          const sameTeacher = courseTeacher(klass, subject) === courseTeacher(previous.klass, previous.subjects[index]) ? 2 : 0;
-          return value + sameSubject + sameTeacher;
-        }, 0), 0);
-        if(!best || score < best.score) best = {sequence, score};
-      }
-      sequences.push({klass, subjects:best.sequence});
-    });
-    const groups = base.map((_,index) => sequences.map(item => bindingCourse(item.klass, item.subjects[index])));
-    const specialOptions = sequences[0].subjects.map(subject => subjects.indexOf(subject));
-    prepareBindingDraft(groups, specialOptions);
+    const base = makeInterleavedSubjectSequence(subjects, hours);
+    const specialOptions = base.map(subject => subjects.indexOf(subject));
+    prepareBindingDraft(base.length, classes, subjects.map((subject,index) => ({subject,hours:hours[index]})), specialOptions);
   }
 
   function renderBindingDraft(){
@@ -1186,6 +1409,7 @@
     if(!wrap) return;
     wrap.innerHTML = '';
     document.getElementById('addBindingDraftRow').style.display = bindingDraft.length ? 'block' : 'none';
+    const bindingKind = document.querySelector('input[name="bindingKind"]:checked').value;
     bindingDraft.forEach((slot,index) => {
       const row = document.createElement('div');
       row.className = 'binding-slot';
@@ -1194,9 +1418,7 @@
 
       const description = document.createElement('div');
       const descriptionLabel = document.createElement('label'); descriptionLabel.textContent = `第${index+1}堂`;
-      const descriptionText = document.createElement('div');
-      descriptionText.textContent = slot.courses.map(course => `${course.klass} ${course.subject}`).join(' ↔ ');
-      description.append(descriptionLabel,descriptionText);
+      description.append(descriptionLabel);
 
       const modeBox = document.createElement('div');
       const modeLabel = document.createElement('label'); modeLabel.textContent = '時段';
@@ -1229,12 +1451,11 @@
       fields.append(description,modeBox);
       if(slot.mode === 'FIXED') fields.append(dayBox,periodBox);
       row.appendChild(fields);
-      const bindingKind = document.querySelector('input[name="bindingKind"]:checked').value;
       if(document.getElementById('bindingSpecialEnabled').checked && bindingKind === 'cross'){
         const specialBox = document.createElement('div');
         specialBox.className = 'binding-special-choice';
         const specialLabel = document.createElement('label');
-        specialLabel.textContent = `這一堂的特教課程（預設跟著 ${slot.courses[0]?.klass || '第一班'}）`;
+        specialLabel.textContent = '這一堂要讓特教老師上哪一科';
         const specialSelect = document.createElement('select');
         specialSelect.innerHTML = '<option value="">請逐堂選擇</option>' + bindingSpecialConfigs.map((config,configIndex) =>
           `<option value="${configIndex}">${escapeHtml(config.key)}：${escapeHtml(config.subject || '尚未填科目')}／${escapeHtml(config.teacher || '尚未選老師')}</option>`
@@ -1274,7 +1495,7 @@
         teacher:specialConfig.teacher, subject:specialConfig.subject, klass:specialClass,
         day:slot.mode==='AUTO' ? '-' : slot.day,
         period:slot.mode==='AUTO' ? '-' : slot.period,
-        courses:slot.courses
+        classes:[...bindingDraftMeta.classes], subjects:bindingDraftMeta.subjects.map(item => ({...item}))
       });
     });
     bindingDraft = [];
@@ -1297,9 +1518,7 @@
     document.getElementById('bindingEmptyHint').style.display = sets.size ? 'none' : 'block';
     sets.forEach(set => {
       const descriptions = [...new Set(set.bindings.map(binding =>
-        binding.courses.length
-          ? binding.courses.map(course => `${escapeHtml(course.klass)} ${escapeHtml(course.subject)}`).join(' ↔ ')
-          : '舊版特教綁課'
+        `${binding.classes.map(escapeHtml).join('、')}：${binding.subjects.map(item => `${escapeHtml(item.subject)} ${item.hours}堂`).join('、')}`
       ))];
       const specialDescriptions = [...new Set(set.bindings
         .filter(binding => binding.type !== 'normal' && binding.klass)
@@ -1412,6 +1631,52 @@
     });
   }
 
+  function addCourseUnavailable(){
+    const text = document.getElementById('courseUnavailableBulk').value.trim();
+    if(!text) return;
+    const knownClasses = new Set(getAllClasses());
+    const knownCourses = new Set(state.courses.map(c => `${c.klass}\u0000${c.subject}`));
+    const added = [];
+    for(const [index, raw] of text.split(/\r?\n/).entries()){
+      if(!raw.trim()) continue;
+      const parts = raw.split(/[|｜]/).map(value => value.trim());
+      if(parts.length !== 4){ alert(`第 ${index + 1} 行格式不正確。`); return; }
+      const classes = parts[0].split(/[,，、]/).map(value => value.trim()).filter(Boolean);
+      const subjects = parts[1].split(/[,，、]/).map(value => value.trim()).filter(Boolean);
+      const day = parts[2].replace(/^星期/, '');
+      const periods = parts[3].split(/[,，、]/).map(Number);
+      if(!classes.length || !subjects.length || !DAYS.includes(day) ||
+         periods.some(period => !PERIODS.includes(period)) ||
+         classes.some(klass => !knownClasses.has(klass))){
+        alert(`第 ${index + 1} 行含有未知班級、星期或節次。`); return;
+      }
+      const missing = classes.flatMap(klass => subjects.map(subject => [klass, subject]))
+        .find(([klass, subject]) => !knownCourses.has(`${klass}\u0000${subject}`));
+      if(missing){ alert(`第 ${index + 1} 行：${missing[0]}班沒有「${missing[1]}」課程。`); return; }
+      added.push({classes:[...new Set(classes)], subjects:[...new Set(subjects)], day, periods:[...new Set(periods)].sort((a,b)=>a-b)});
+    }
+    state.courseUnavailable.push(...added);
+    document.getElementById('courseUnavailableBulk').value = '';
+    renderCourseUnavailableTable();
+    document.getElementById('outputText').value = '';
+  }
+
+  function renderCourseUnavailableTable(){
+    const table = document.getElementById('courseUnavailableTable');
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML = '';
+    table.style.display = state.courseUnavailable.length ? 'table' : 'none';
+    document.getElementById('courseUnavailableEmptyHint').style.display = state.courseUnavailable.length ? 'none' : 'block';
+    state.courseUnavailable.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${item.classes.map(escapeHtml).join('、')}</td><td>${item.subjects.map(escapeHtml).join('、')}</td><td>星期${item.day}</td><td>第 ${item.periods.join('、')} 節</td><td></td>`;
+      const button = document.createElement('button');
+      button.className = 'danger-ghost'; button.textContent = '刪除';
+      button.onclick = () => { state.courseUnavailable.splice(index, 1); renderCourseUnavailableTable(); };
+      tr.lastElementChild.append(button); tbody.append(tr);
+    });
+  }
+
   // ---------- 匯入配課 Excel ----------
   async function importCourseWorkbook(input){
     const file = input.files[0];
@@ -1421,6 +1686,8 @@
       const workbook = XLSX.read(await file.arrayBuffer(), {type:'array'});
       const imported = parseStandardCourseWorkbook(workbook) || parseLegacyCourseWorkbook(workbook);
       if(!imported || !imported.teachers.length) throw new Error('找不到可匯入的教師資料');
+      const duplicate = findDuplicateClassSubject(imported.courses);
+      if(duplicate) throw new Error(`${duplicate.klass}班的${duplicate.subject}有重複課程；每個班級＋科目只能有一筆`);
       applyCourseWorkbookData(imported);
       alert(`已匯入 ${imported.teachers.length} 位教師、${imported.courses.length} 筆課程${imported.ignored ? `，忽略 ${imported.ignored} 筆非三位數班級資料` : ''}`);
     } catch(error){
@@ -1446,7 +1713,7 @@
       const subject = String(row['科目'] || '').trim();
       const hours = Number(row['堂數']);
       const klass = String(row['班級'] || '').trim();
-      if(!teacher || !subject || !Number.isFinite(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
+      if(!teacher || !subject || !Number.isInteger(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
         if(teacher || subject || klass) ignored++;
         return;
       }
@@ -1492,7 +1759,7 @@
             const hours = Number(rows[row]?.[column + 1]);
             const klass = String(rows[row]?.[column + 2] || '').trim();
             if(!subject) continue;
-            if(!Number.isFinite(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
+            if(!Number.isInteger(hours) || hours <= 0 || !/^\d{3}$/.test(klass)){
               ignored++;
               continue;
             }
@@ -1513,23 +1780,37 @@
     }
   }
 
+  function findDuplicateClassSubject(courses){
+    const seen = new Set();
+    return courses.find(course => {
+      const key = `${course.klass}\u0000${course.subject}`;
+      if(seen.has(key)) return true;
+      seen.add(key);
+      return false;
+    });
+  }
+
   function applyCourseWorkbookData(data){
     state.teachers = data.teachers;
     state.courses = data.courses.filter(course => !getSpecialClasses().includes(course.klass));
     state.fixed = [];
     state.specialBindings = [];
     state.unavailable = [];
+    state.courseUnavailable = [];
+    state.roomSettings = defaultRoomSettings();
+    renderRoomSettings();
     renderTeacherChips();
     refreshTeacherDependentSelects();
     renderCourseTable();
     renderFixedTable();
     renderBindingTable();
     renderBlockTable();
+    renderCourseUnavailableTable();
     resetBindingBuilder();
     document.getElementById('outputText').value = '';
   }
 
-  // ---------- 讀取舊 input.txt ----------
+  // ---------- 讀取 input.txt ----------
   function importInputFile(input){
     const file = input.files[0];
     if(!file) return;
@@ -1549,10 +1830,15 @@
   function parseInputText(text){
     const imported = {
       schoolName:'', schoolYear:'', semester:'1',
-      courses:[], fixed:[], specialBindings:[], unavailable:[]
+      courses:[], fixed:[], specialBindings:[], unavailable:[], courseUnavailable:[],
+      roomSettings:defaultRoomSettings()
     };
     const teachers = new Set();
-    const bindingGroups = new Map();
+    const courseKeys = new Set();
+    const bindingSets = new Map();
+    const bindingTimes = [];
+    const roomSettings = new Map(imported.roomSettings.map(item => [item.subject, item]));
+    const configuredRoomCapacities = new Map();
     const records = text.replace(/^\uFEFF/, '').split(/\r?\n/);
     for(let index=0; index<records.length; index++){
       const line = records[index].trim();
@@ -1565,66 +1851,87 @@
         [, imported.schoolName, imported.schoolYear, imported.semester] = parts;
       } else if(tag === 'C' && parts.length === 5 && !invalid && /^\d+$/.test(parts[3]) && Number(parts[3]) > 0){
         const [, teacher, subject, hours, klass] = parts;
+        const courseKey = `${klass}\u0000${subject}`;
+        if(courseKeys.has(courseKey)) return {error:index + 1};
+        courseKeys.add(courseKey);
         imported.courses.push({teacher, subject, hours:Number(hours), klass});
         teachers.add(teacher);
       } else if(tag === 'F' && parts.length === 6 && !invalid && DAYS.includes(parts[4]) && PERIODS.includes(Number(parts[5]))){
         const [, teacher, subject, klass, day, period] = parts;
         imported.fixed.push({teacher, subject, klass, day, period:Number(period)});
         teachers.add(teacher);
-      } else if(tag === 'B' && parts.length === 9 && !invalid){
-        const [, groupId, mode, role, teacher, subject, klass, day, period] = parts;
-        const normalizedRole = role === 'SP' ? 'S' : role;
+      } else if(tag === 'BK' && parts.length === 4){
+        const [, bindingSetId, classText, subjectText] = parts;
+        const classes = classText.split(',').map(value => value.trim()).filter(Boolean);
+        const subjects = subjectText.split(',').map(value => {
+          const [subject,hours] = value.split(':');
+          return {subject:subject?.trim(), hours:Number(hours)};
+        });
+        if(!bindingSetId || classes.length < 2 || new Set(classes).size !== classes.length ||
+           subjects.some(item => !item.subject || !Number.isInteger(item.hours) || item.hours <= 0)){
+          return {error:index + 1};
+        }
+        bindingSets.set(bindingSetId, {bindingSetId, classes, subjects, line:index+1});
+      } else if(tag === 'BT' && parts.length === 9){
+        const [, bindingSetId, groupId, mode, day, period, teacher, subject, klass] = parts;
         const validTime = mode === 'AUTO'
           ? day === '-' && period === '-'
           : mode === 'FIXED' && DAYS.includes(day) && PERIODS.includes(Number(period));
-        if(!validTime || !['R','S'].includes(normalizedRole)){
+        const noSpecial = teacher === '-' && subject === '-' && klass === '-';
+        const hasSpecial = [teacher,subject,klass].every(value => value && value !== '-');
+        if(!bindingSetId || !groupId || !validTime || (!noSpecial && !hasSpecial)){
           return {error:index + 1};
         }
-        if(!bindingGroups.has(groupId)) bindingGroups.set(groupId, []);
-        bindingGroups.get(groupId).push({
-          groupId, mode, role:normalizedRole, teacher, subject, klass, day,
-          period:mode==='AUTO' ? '-' : Number(period), line:index+1
+        bindingTimes.push({
+          bindingSetId, groupId, mode, day,
+          period:mode==='AUTO' ? '-' : Number(period),
+          teacher:noSpecial ? '' : teacher, subject:noSpecial ? '' : subject,
+          klass:noSpecial ? '' : klass, line:index+1
         });
-        teachers.add(teacher);
-      } else if(tag === 'SP' && parts.length === 6 && !invalid && DAYS.includes(parts[4]) && PERIODS.includes(Number(parts[5]))){
-        const [, teacher, subject, klass, day, period] = parts;
-        imported.specialBindings.push({type:'special', legacy:true, teacher, subject, klass, day, period:Number(period), courses:[]});
-        teachers.add(teacher);
+        if(hasSpecial) teachers.add(teacher);
       } else if(tag === 'U' && parts.length === 4 && !invalid && DAYS.includes(parts[2]) && PERIODS.includes(Number(parts[3]))){
         const [, teacher, day, period] = parts;
         imported.unavailable.push({teacher, day, period:Number(period)});
         teachers.add(teacher);
+      } else if(tag === 'CU' && parts.length === 5){
+        const [, classText, subjectText, day, periodText] = parts;
+        const classes = classText.split(',').filter(Boolean);
+        const subjects = subjectText.split(',').filter(Boolean);
+        const periods = periodText.split(',').map(Number);
+        if(!classes.length || !subjects.length || !DAYS.includes(day) || periods.some(period => !PERIODS.includes(period))){
+          return {error:index + 1};
+        }
+        imported.courseUnavailable.push({classes, subjects, day, periods});
+      } else if(tag === 'R' && parts.length === 4 && !invalid && /^\d+$/.test(parts[3]) && Number(parts[3]) > 0){
+        const [, subject, room, capacityText] = parts;
+        const capacity = Number(capacityText);
+        if(configuredRoomCapacities.has(room) && configuredRoomCapacities.get(room) !== capacity){
+          return {error:index + 1};
+        }
+        configuredRoomCapacities.set(room, capacity);
+        roomSettings.set(subject, {subject, room, capacity});
       } else {
         return {error:index + 1};
       }
     }
 
-    for(const [groupId, rows] of bindingGroups){
-      const first = rows[0];
-      if(rows.some(row => row.mode!==first.mode || row.day!==first.day || row.period!==first.period)){
-        return {error:rows.find(row => row.mode!==first.mode || row.day!==first.day || row.period!==first.period).line};
-      }
-      const regularRows = rows.filter(row => row.role==='R');
-      const specialRows = rows.filter(row => row.role==='S');
-      if(regularRows.length < 2 || specialRows.length > 1 || new Set(regularRows.map(row=>row.klass)).size !== regularRows.length){
-        return {error:first.line};
-      }
-      const courses = regularRows.map(({teacher,subject,klass}) => ({teacher,subject,klass}));
-      if(specialRows.length){
-        const special = specialRows[0];
-        imported.specialBindings.push({
-          groupId, mode:first.mode, type:'special', teacher:special.teacher,
-          subject:special.subject, klass:special.klass, day:first.day,
-          period:first.period, courses
-        });
-      } else {
-        imported.specialBindings.push({
-          groupId, mode:first.mode, type:'normal', day:first.day,
-          period:first.period, courses
-        });
-      }
+    if(new Set(bindingTimes.map(item => item.groupId)).size !== bindingTimes.length){
+      return {error:bindingTimes.find((item,index) => bindingTimes.findIndex(other => other.groupId===item.groupId) !== index).line};
     }
+    for(const binding of bindingSets.values()){
+      const times = bindingTimes.filter(item => item.bindingSetId === binding.bindingSetId);
+      if(times.length !== binding.subjects.reduce((sum,item) => sum + item.hours, 0)) return {error:binding.line};
+      times.forEach(time => imported.specialBindings.push({
+        ...time,
+        kind:binding.subjects.length === 1 ? 'same' : 'cross',
+        type:time.teacher ? 'special' : 'normal',
+        classes:[...binding.classes], subjects:binding.subjects.map(item => ({...item}))
+      }));
+    }
+    const unknownTime = bindingTimes.find(item => !bindingSets.has(item.bindingSetId));
+    if(unknownTime) return {error:unknownTime.line};
     imported.teachers = [...teachers];
+    imported.roomSettings = [...roomSettings.values()];
     return imported;
   }
 
@@ -1635,10 +1942,10 @@
     const regularClasses = [
       ...data.courses.map(item => item.klass),
       ...data.fixed.map(item => item.klass).filter(klass => !specialClasses.has(klass)),
-      ...data.specialBindings.flatMap(binding => binding.courses.map(course => course.klass))
+      ...data.specialBindings.flatMap(binding => binding.classes)
     ];
-    state.grades = {7:0,8:0,9:0};
-    state.specialGrades = {7:false,8:false,9:false};
+    state.grades = {1:0,2:0,3:0,7:0,8:0,9:0};
+    state.specialGrades = {1:false,2:false,3:false,7:false,8:false,9:false};
     regularClasses.forEach(klass => {
       const grade = Number(klass[0]);
       const number = Number(klass.slice(1));
@@ -1656,6 +1963,8 @@
     state.fixed = data.fixed;
     state.specialBindings = data.specialBindings;
     state.unavailable = data.unavailable;
+    state.courseUnavailable = data.courseUnavailable;
+    state.roomSettings = data.roomSettings;
     document.getElementById('schoolName').value = data.schoolName;
     document.getElementById('schoolYear').value = data.schoolYear;
     document.getElementById('semester').value = data.semester;
@@ -1668,6 +1977,8 @@
     renderFixedTable();
     renderBindingTable();
     renderBlockTable();
+    renderCourseUnavailableTable();
+    renderRoomSettings();
     resetBindingBuilder();
     document.getElementById('outputText').value = '';
   }
@@ -1678,6 +1989,9 @@
     const schoolYear = document.getElementById('schoolYear').value.trim();
     const semester = document.getElementById('semester').value;
     let lines = [`S|${schoolName}|${schoolYear}|${semester}`];
+    state.roomSettings.forEach(item => {
+      lines.push(`R|${item.subject}|${item.room}|${item.capacity}`);
+    });
     state.courses.filter(c => !getSpecialClasses().includes(c.klass)).forEach(c => {
       lines.push(`C|${c.teacher}|${c.subject}|${c.hours}|${c.klass}`);
     });
@@ -1690,22 +2004,22 @@
       }
     });
     let nextGroupNumber = nextBindingGroupNumber();
+    const writtenSets = new Set();
     state.specialBindings.forEach(binding => {
-      if(binding.legacy){
-        lines.push(`SP|${binding.teacher}|${binding.subject}|${binding.klass}|${binding.day}|${binding.period}`);
-        return;
-      }
       if(!binding.groupId) binding.groupId = formatBindingGroupId(nextGroupNumber++);
-      const mode = binding.mode || 'FIXED';
-      binding.courses.forEach(course => {
-        lines.push(`B|${binding.groupId}|${mode}|R|${course.teacher}|${course.subject}|${course.klass}|${binding.day}|${binding.period}`);
-      });
-      if(binding.type !== 'normal'){
-        lines.push(`B|${binding.groupId}|${mode}|S|${binding.teacher}|${binding.subject}|${binding.klass}|${binding.day}|${binding.period}`);
+      if(!writtenSets.has(binding.bindingSetId)){
+        lines.push(`BK|${binding.bindingSetId}|${binding.classes.join(',')}|${binding.subjects.map(item => `${item.subject}:${item.hours}`).join(',')}`);
+        writtenSets.add(binding.bindingSetId);
       }
+      const mode = binding.mode || 'FIXED';
+      const special = binding.type === 'normal' ? ['-','-','-'] : [binding.teacher,binding.subject,binding.klass];
+      lines.push(`BT|${binding.bindingSetId}|${binding.groupId}|${mode}|${binding.day}|${binding.period}|${special.join('|')}`);
     });
     state.unavailable.forEach(u => {
       lines.push(`U|${u.teacher}|${u.day}|${u.period}`);
+    });
+    state.courseUnavailable.forEach(item => {
+      lines.push(`CU|${item.classes.join(',')}|${item.subjects.join(',')}|${item.day}|${item.periods.join(',')}`);
     });
     document.getElementById('outputText').value = lines.join('\n');
   }
@@ -1758,13 +2072,15 @@
 
   function resetAll(){
     if(!confirm('確定要清空所有已輸入的資料嗎？這個動作無法復原。')) return;
-    state.grades = {7:0,8:0,9:0};
-    state.specialGrades = {7:false,8:false,9:false};
+    state.grades = {1:0,2:0,3:0,7:0,8:0,9:0};
+    state.specialGrades = {1:false,2:false,3:false,7:false,8:false,9:false};
     state.teachers = [];
     state.courses = [];
     state.fixed = [];
     state.specialBindings = [];
     state.unavailable = [];
+    state.courseUnavailable = [];
+    state.roomSettings = defaultRoomSettings();
     document.getElementById('schoolName').value = '';
     document.getElementById('schoolYear').value = '';
     document.getElementById('semester').value = '1';
@@ -1781,12 +2097,15 @@
     renderFixedTable();
     renderBindingTable();
     renderBlockTable();
+    renderCourseUnavailableTable();
+    renderRoomSettings();
     resetBindingBuilder();
     document.getElementById('outputText').value = '';
   }
 
   // ---------- 初始化 ----------
   initGradeGrid();
+  renderRoomSettings();
   updateClassPreview();
   initPeriodSelectFixed();
   initPeriodCheckGrid();
@@ -1796,6 +2115,7 @@
   renderFixedTable();
   renderBindingTable();
   renderBlockTable();
+  renderCourseUnavailableTable();
   resetBindingBuilder();
 </script>
 </body>
