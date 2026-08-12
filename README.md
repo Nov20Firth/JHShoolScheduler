@@ -1,12 +1,8 @@
-# 國中排課系統
+# 排課系統
 作者：王老師<br>
 原始專案：[GitHub](https://github.com/Nov20Firth/JHShoolScheduler/edit/main/README.md)
 
 利用 **python Google OR-Tools** 自動產生國中excel課表。
-系統分為兩個步驟：
-1. 使用 `step1courses.html` 整理課程、必排條件與教師不可排時段，產出 `input.txt` 。
-2. 使用 `step2scheduler.py` 讀取 `input.txt`，自動排課並產生 Excel 課表。
-
 # 功能與限制
 ## 硬限制
 > ✅同一門課同一天最多一節。<br>
@@ -21,12 +17,10 @@
 > 4️⃣老師避免連續3節課<br>
 
 # 使用
-1. 開啟 `step1courses.html`
-2. 填排課需求並下載 `input.txt`
-   (step3. step4.擇一方法使用)
-3. 線上運行(簡單)：將 `input.txt` 與 `step2scheduler.py` 一同丟給claude AI(免費)
-4. 離線運行(python環境)：將 `input.txt` 與 `step2scheduler.py` 放在同一資料夾，執行python step2scheduler.py.py
-完成後會產生schedule.xlsx
+1. 開啟 `index.html`，依序填寫資料(班級、教師、課程、固定課、綁課及教師不可排時段)，按下「檢查並下載 input.txt」。
+2. 把下載的 `2a_國中排課.py` 和 `2b_input.txt` 一起丟給claude ai (也可以自己安裝python來運行)，產出 `暫定課表.html`。
+3.開啟`暫定課表.html`，可手動調整課表，且做簡單檢查，完成後按「儲存微調資料」，瀏覽器會下載 `3b_data.json`。
+4. 把下載的 `3a_國中微調.py` 和 `3b_data.json` 一起丟給claude ai (也可以自己安裝python來運行)，驗證無衝突後會產生 `微調1.xlsx`
 
 # 隱私說明
 以本機 Python 執行時，HTML 與 Python 程式皆在電腦本機處理資料；不會將任何資料上傳至網路。
@@ -37,23 +31,33 @@
 教學組長、七忠導師
 最後利用離線軟體（word& excel）尋找並取代
 ```
-
+## 已知限制
+- 瀏覽器微調僅能交換同班兩堂未鎖定課程，不能跨班拖曳。
+- 綁課不能直接在暫定課表中移動。
 
 # 使用技術
 - Python
-- Google OR-Tools (CP-SAT)
-- OpenPyXL
-- HTML / JavaScript
-- claude & codex (vibe coding)
+- Google OR-Tools (CP-SAT)：排課求解。
+- OpenPyXL：輸出 Excel 課表。
+- HTML / JavaScript：前端介面
+- claude & codex：vibe coding
 
 ## 授權與使用規則
-本專案歡迎非商業用途的使用、分享與修改。
+本專案歡迎非商業用途的使用與修改。
 - ✅允許個人與教育等非商業使用
 - ✅可分享，須保留作者姓名。
 - ✅可修改，須保留作者姓名。
 - ✅衍生作品須保留原作者資訊與原始專案連結。
 - ❌不得用於商業用途；包含販售、收費服務、商業部署或納入付費產品。
 - 商業使用請先聯絡作者取得書面授權。
+
+## 自由贊助
+本專案為免費開源工具，開發與維護成本由作者自行負擔，並使用訂閱制ChatGPT Pro輔助開發。
+如果這個工具成功替你省下時間，歡迎用每小時1美元的心意「自由」支持。
+您的贊助將用於補貼開發工具訂閱費，以及持續維護、改進現有專案和開發更多免費工具。
+贊助完全自由，無論是否贊助，都不影響本專案的使用，我也會繼續盡力維護。
+> Ko-fi 使用的金額單位是**美元（USD）**，付款前請再次確認金額。若不慎輸入錯誤金額，請聯絡我退款。
+[前往 Ko-fi 贊助](https://ko-fi.com/nov21st)
 
 作者：王老師
 完整授權條款：PolyForm Noncommercial License 1.0.0，請見 [LICENSE](./LICENSE)。
