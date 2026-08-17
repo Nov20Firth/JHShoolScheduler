@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>國中排課資料整理小幫手 v0.3.0</title>
+<title>國中排課資料整理小幫手 v0.3.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -173,7 +173,7 @@
 
 <header class="top">
   <div class="wrap">
-    <h1>國中排課資料整理小幫手 v0.3.0</h1>
+    <h1>國中排課資料整理小幫手 v0.3.1</h1>
     <p>用表單整理課程與排課條件，產生 input.txt，再由國中排課程式自動建立可拖曳微調的暫定課表。</p>
   </div>
 </header>
@@ -1000,6 +1000,124 @@
     });
   }
 
+  function fixedSlotText(day, period){
+    return `週${day}第${period}節`;
+  }
+
+  function fixedCourseText(item){
+    return `${item.klass}班「${item.subject}／${item.teacher}」`;
+  }
+
+  function fixedCourseConflictText(item, includeClass = false){
+    return `${includeClass ? `${item.klass}班` : ''}${item.subject}／${item.teacher}`;
+  }
+
+  function fixedBindingText(binding){
+    return `綁課${binding.groupId ? ` ${binding.groupId}` : ''}`;
+  }
+
+  function teacherUnavailableAt(teacher, day, period){
+    return state.unavailable.some(item =>
+      item.teacher === teacher && item.day === day && Number(item.period) === Number(period)
+    );
+  }
+
+  // 固定綁課一定會占用所有綁定班級；若各班的教師可以唯一確定，也一併檢查教師衝突。
+  // 不同科綁課若教師會隨科目分配而變動，仍交由國中排課器選擇可行組合，避免誤判。
+  function fixedBindingOccupants(binding){
+    const classes = new Set(binding.classes || []);
+    const teachers = new Set();
+    if(binding.type !== 'normal'){
+      if(binding.klass) classes.add(binding.klass);
+      if(binding.teacher) teachers.add(binding.teacher);
+    }
+    (binding.classes || []).forEach(klass => {
+      const possibleTeachers = [...new Set((binding.subjects || []).map(item =>
+        state.courses.find(course => course.klass === klass && course.subject === item.subject)?.teacher
+      ).filter(Boolean))];
+      if(possibleTeachers.length === 1) teachers.add(possibleTeachers[0]);
+    });
+    return {classes, teachers};
+  }
+
+  function validateFixedSchedule(fixedAssignments = state.fixed, bindings = state.specialBindings){
+    const errors = [];
+    const addError = message => { if(!errors.includes(message)) errors.push(message); };
+    const fixedBindings = bindings.filter(item => item.mode === 'FIXED');
+
+    const fixedCounts = new Map();
+    fixedAssignments.forEach(item => {
+      const key = `${item.teacher}|${item.subject}|${item.klass}`;
+      fixedCounts.set(key, (fixedCounts.get(key) || 0) + 1);
+      const course = state.courses.find(candidate =>
+        candidate.teacher === item.teacher && candidate.subject === item.subject && candidate.klass === item.klass
+      );
+      if(!course){
+        addError(`${fixedCourseText(item)}找不到對應的課程資料`);
+      }
+      if(teacherUnavailableAt(item.teacher,item.day,item.period)){
+        addError(`${item.teacher}的固定課排在${fixedSlotText(item.day,item.period)}，但這是教師不可排時段：${fixedCourseText(item)}`);
+      }
+    });
+    fixedCounts.forEach((count,key) => {
+      const [teacher,subject,klass] = key.split('|');
+      const course = state.courses.find(item => item.teacher===teacher && item.subject===subject && item.klass===klass);
+      if(course && count > course.hours){
+        addError(`${klass}班「${subject}／${teacher}」共有 ${course.hours} 堂，卻設定了 ${count} 堂固定課`);
+      }
+    });
+
+    for(let first=0; first<fixedAssignments.length; first++){
+      for(let second=first+1; second<fixedAssignments.length; second++){
+        const a=fixedAssignments[first], b=fixedAssignments[second];
+        if(a.day!==b.day || Number(a.period)!==Number(b.period)) continue;
+        const slot=fixedSlotText(a.day,a.period);
+        if(a.klass===b.klass){
+          addError(`${a.klass}班${slot}固定課衝突：${fixedCourseConflictText(a)} 與 ${fixedCourseConflictText(b)}`);
+        }else if(a.teacher===b.teacher){
+          addError(`${a.teacher}在${slot}固定課衝突：${fixedCourseConflictText(a,true)} 與 ${fixedCourseConflictText(b,true)}`);
+        }
+      }
+    }
+
+    fixedBindings.forEach(binding => {
+      const occupants=fixedBindingOccupants(binding);
+      occupants.teachers.forEach(teacher => {
+        if(teacherUnavailableAt(teacher,binding.day,binding.period)){
+          addError(`${fixedBindingText(binding)}固定在${fixedSlotText(binding.day,binding.period)}，但${teacher}此時不可排課`);
+        }
+      });
+    });
+
+    fixedAssignments.forEach(fixed => fixedBindings.forEach(binding => {
+      if(fixed.day!==binding.day || Number(fixed.period)!==Number(binding.period)) return;
+      const occupants=fixedBindingOccupants(binding);
+      const slot=fixedSlotText(fixed.day,fixed.period);
+      if(occupants.classes.has(fixed.klass)){
+        addError(`${fixed.klass}班${slot}衝突：${fixedCourseConflictText(fixed)} 與 ${fixedBindingText(binding)}`);
+      }else if(occupants.teachers.has(fixed.teacher)){
+        addError(`${fixed.teacher}在${slot}衝突：${fixedCourseConflictText(fixed,true)} 與 ${fixedBindingText(binding)}`);
+      }
+    }));
+
+    for(let first=0; first<fixedBindings.length; first++){
+      for(let second=first+1; second<fixedBindings.length; second++){
+        const a=fixedBindings[first], b=fixedBindings[second];
+        if(a.day!==b.day || Number(a.period)!==Number(b.period)) continue;
+        const aOccupants=fixedBindingOccupants(a), bOccupants=fixedBindingOccupants(b);
+        const sharedClass=[...aOccupants.classes].find(klass => bOccupants.classes.has(klass));
+        const sharedTeacher=[...aOccupants.teachers].find(teacher => bOccupants.teachers.has(teacher));
+        const slot=fixedSlotText(a.day,a.period);
+        if(sharedClass){
+          addError(`${sharedClass}班${slot}綁課衝突：${fixedBindingText(a)} 與 ${fixedBindingText(b)}`);
+        }else if(sharedTeacher){
+          addError(`${sharedTeacher}在${slot}綁課衝突：${fixedBindingText(a)} 與 ${fixedBindingText(b)}`);
+        }
+      }
+    }
+    return errors;
+  }
+
   function addFixedAssignment(){
     const subject = document.getElementById('fixedSubjectSelect').value;
     const klass = document.getElementById('fixedClassSelect').value;
@@ -1008,9 +1126,15 @@
     const period = parseInt(document.getElementById('fixedPeriodSelect').value);
     const match = state.courses.find(c => c.teacher===teacher && c.klass===klass && c.subject===subject);
     if(!match){ alert('請確認科目、班級及老師都已選擇'); return; }
-    const exists = state.fixed.some(f => f.teacher===teacher && f.subject===subject && f.klass===klass && f.day===day && f.period===period);
-    if(exists){ alert('這筆必排條件已經加入過了'); return; }
-    state.fixed.push({teacher, subject, klass, day, period});
+    const candidate = {teacher, subject, klass, day, period};
+    const currentErrors = new Set(validateFixedSchedule());
+    const newErrors = validateFixedSchedule([...state.fixed,candidate])
+      .filter(message => !currentErrors.has(message));
+    if(newErrors.length){
+      alert('無法加入固定課：\n' + newErrors.join('\n'));
+      return;
+    }
+    state.fixed.push(candidate);
     renderFixedTable();
     // 科目、星期、節次都保留不變，只切換班級到下一個（同科目常常連續設定不同班級）
     const classSel = document.getElementById('fixedClassSelect');
@@ -1410,18 +1534,26 @@
 
     const bindingSetId = `K${Date.now()}`;
     let groupNumber = nextBindingGroupNumber();
-    bindingDraft.forEach(slot => {
+    const newBindings = bindingDraft.map(slot => {
       const specialOption = kind === 'same' ? 0 : slot.specialOption;
       const specialConfig = specialEnabled ? bindingSpecialConfigs[specialOption] : {teacher:'',subject:''};
-      state.specialBindings.push({
+      return {
         groupId:formatBindingGroupId(groupNumber++), bindingSetId, kind,
         mode:slot.mode, type:specialEnabled ? 'special' : 'normal',
         teacher:specialConfig.teacher, subject:specialConfig.subject, klass:specialClass,
         day:slot.mode==='AUTO' ? '-' : slot.day,
         period:slot.mode==='AUTO' ? '-' : slot.period,
         classes:[...bindingDraftMeta.classes], subjects:bindingDraftMeta.subjects.map(item => ({...item}))
-      });
+      };
     });
+    const currentErrors = new Set(validateFixedSchedule());
+    const newErrors = validateFixedSchedule(state.fixed,[...state.specialBindings,...newBindings])
+      .filter(message => !currentErrors.has(message));
+    if(newErrors.length){
+      alert('無法加入綁課：\n' + newErrors.join('\n'));
+      return;
+    }
+    state.specialBindings.push(...newBindings);
     bindingDraft = [];
     renderBindingDraft();
     renderBindingTable();
@@ -1889,6 +2021,7 @@
       if(!expectedClasses.includes(klass)) errors.push(`${klass}班不在步驟1設定的班級中`);
       else if(hours !== 35) errors.push(`${klass}班目前 ${hours} 節，應為 35 節`);
     });
+    errors.push(...validateFixedSchedule());
     return errors;
   }
 
