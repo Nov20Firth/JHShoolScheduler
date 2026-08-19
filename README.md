@@ -2,6 +2,7 @@
 作者：王老師<br>
 目前版本：`v0.4.0`<br>
 原始專案：[GitHub](https://github.com/Nov20Firth/JuniorHighSchoolScheduler)
+自由贊助（詳見最下方區塊）：[Ko-fi贊助](https://ko-fi.com/nov21st)
 
 利用 **python Google OR-Tools** 自動產生國中excel課表。
 # 功能與限制
