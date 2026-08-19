@@ -1,8 +1,9 @@
 # 排課系統
 作者：王老師<br>
+聯絡信箱：nov21st@school.ptjh.cyc.edu.tw
 目前版本：`v0.4.0`<br>
 原始專案：[GitHub](https://github.com/Nov20Firth/JuniorHighSchoolScheduler)<br>
-自由贊助（詳見最下方區塊）：[Ko-fi贊助](https://ko-fi.com/nov21st)<br>
+自由贊助（詳見最下方區塊）
 
 利用 **python Google OR-Tools** 自動產生國中excel課表。
 # 功能與限制
@@ -104,8 +105,8 @@
 如果這個工具成功替你省下時間，歡迎用每小時1美元的心意「自由」支持。
 您的贊助將用於補貼開發工具訂閱費，以及持續維護、改進現有專案和開發更多免費工具。
 贊助完全自由，無論是否贊助，都不影響本專案的使用，我也會繼續盡力維護。
-> Ko-fi 使用的金額單位是**美元（USD）**，付款前請再次確認金額。若不慎輸入錯誤金額，請聯絡我退款。
-[前往 Ko-fi 贊助](https://ko-fi.com/nov21st)
+> Ko-fi金額是**美元（USD）**，付款前請再次確認金額。若不慎輸入錯誤金額，請聯絡我退款。
+[Ko-fi 贊助](https://ko-fi.com/nov21st)
 
 作者：王老師
 完整授權條款：PolyForm Noncommercial License 1.0.0，請見 [LICENSE](./LICENSE)。
