@@ -1,6 +1,6 @@
 # 排課系統
 作者：王老師<br>
-聯絡信箱：nov21st@school.ptjh.cyc.edu.tw
+聯絡信箱：nov21st@school.ptjh.cyc.edu.tw<br>
 目前版本：`v0.4.0`<br>
 原始專案：[GitHub](https://github.com/Nov20Firth/JuniorHighSchoolScheduler)<br>
 自由贊助（詳見最下方區塊）
