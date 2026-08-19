@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.python-packages/
+
+input.txt
+2b_input.txt
+3b_data*.json
+data.json
+暫定課表.html
+微調*.xlsx
